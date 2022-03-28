@@ -1,0 +1,32 @@
+import pygame as pg
+
+# define some colors (R, G, B)
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+DARKGREY = (40, 40, 40)
+LIGHTGREY = (100, 100, 100)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
+YELLOW = (255, 255, 0)
+
+# game settings
+FPS = 60
+TITLE = "Tank Game"
+MAP_FILE = 'map.txt'
+BACKGROUND_COLOR = DARKGREY
+GRID_COLOR = LIGHTGREY
+TILESIZE = 24
+
+# Player settings
+PLAYER_SPEED = 200.0
+PLAYER_ROTATION_SPEED = 250.0
+
+# Image settings
+RED_PLAYER_IMAGE = 'tank_red.png'
+RED_PLAYER_INITIAL_ROTATION = 90
+BLUE_PLAYER_IMAGE = 'tank_blue.png'
+BLUE_PLAYER_INITIAL_ROTATION = 90
+PLAYER_HIT_RECTANGLE = pg.Rect(0, 0, 45, 45)
+
+# Mob settings
+MOB_IMG = RED_PLAYER_IMAGE
