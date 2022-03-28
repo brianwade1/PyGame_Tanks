@@ -19,7 +19,7 @@ TILESIZE = 24
 
 # Player settings
 PLAYER_SPEED = 200.0
-PLAYER_ROTATION_SPEED = 250.0
+PLAYER_ROTATION_SPEED = 150.0
 
 # Image settings
 RED_PLAYER_IMAGE = 'tank_red.png'
@@ -30,3 +30,5 @@ PLAYER_HIT_RECTANGLE = pg.Rect(0, 0, 45, 45)
 
 # Mob settings
 MOB_IMG = RED_PLAYER_IMAGE
+MOB_SPEED = 150
+MOB_HIT_RECTANGLE = pg.Rect(0, 0, 45, 45)
