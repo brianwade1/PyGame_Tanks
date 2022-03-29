@@ -9,11 +9,8 @@ class DataLoader:
         loads objects for pygame
         """
         self.current_dir = current_dir
-        #self.screen = self.game.screen
         self.map_full_path = os.path.join(current_dir,'Config', MAP_FILE)
-        self.image_paths = {}
-        self.image_paths['Red_Tank'] = os.path.join(current_dir,'Images', 'GameImages', RED_PLAYER_IMAGE)
-        self.image_paths['Blue_Tank'] = os.path.join(current_dir,'Images', 'GameImages', BLUE_PLAYER_IMAGE)
+        self.image_dir = os.path.join(current_dir,'Images', 'GameImages')
         
 
     def load_map(self):
@@ -28,14 +25,16 @@ class DataLoader:
             raise Exception("cannot find map file")
 
     
-    def load_images(self):
+    def load_images(self, image_dict):
         images = {}
-        for img_name, img_path in self.image_paths.items():
-            file_good = os.path.exists(img_path)
+        for img_name, img_path in image_dict.items():
+            file_path = os.path.join(self.image_dir, img_path)
+            file_good = os.path.exists(file_path)
             if file_good:
-                images[img_name] = pg.image.load(img_path).convert_alpha()
+                images[img_name] = pg.image.load(file_path).convert_alpha()
             else:
                 raise Exception('image ' + img_name + ' not found')
+
         return images
 
 

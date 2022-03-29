@@ -25,12 +25,27 @@ def collide_with_walls(sprite, group, dir):
             sprite.hit_rect.centery = sprite.pos.y
 
 
+def draw_health_box(sprite, full_health):
+    if sprite.health > 0.6 * full_health:
+        col = GREEN
+    elif sprite.health > 0.3 * full_health:
+        col = YELLOW
+    else:
+        col = RED
+    width = int(sprite.hit_rect.width * sprite.health / full_health)
+    sprite.health_bar = pg.Rect(0, 40, width, 5)
+    #pg.draw.rect(sprite.image, col, sprite.health_bar)
+    if sprite.health < full_health:
+        pg.draw.rect(sprite.image, col, sprite.health_bar)
+
+
 class Player(pg.sprite.Sprite):
     def __init__(self, game, x, y):
-        self.groups = game.all_sprites
+        self.groups = game.all_sprites, game.players
         pg.sprite.Sprite.__init__(self, self.groups)
         self.game = game
-        self.image_file = game.images['Blue_Tank']
+        self.color = 'Blue'
+        self.image_file = game.tank_images[self.color]
         self.image = self.image_file
         self.rect = self.image.get_rect()
         self.hit_rect = PLAYER_HIT_RECTANGLE.copy()
@@ -38,8 +53,18 @@ class Player(pg.sprite.Sprite):
         self.vel = vec(0, 0)
         self.pos = vec(x, y) * TILESIZE
         self.rot = BLUE_PLAYER_INITIAL_ROTATION
+        self.last_shot = 0
+        self.health = PLAYER_HEALTH
 
     def get_keys(self):
+        # for event in pg.event.get():
+        #     if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
+        #         dir = vec(1, 0).rotate(-self.rot)
+        #         pos = self.pos #+ BARREL_OFFSET.rotate(-self.rot)
+        #         Bullet(self.game, pos, dir, self.rot, self.color)
+        #         self.vel = vec(-KICKBACK, 0).rotate(-self.rot)
+
+
         self.vel = vec(0, 0)
         self.rot_speed = 0
         keys = pg.key.get_pressed()
@@ -51,6 +76,14 @@ class Player(pg.sprite.Sprite):
              self.vel = vec(PLAYER_SPEED, 0).rotate(-self.rot)
         if keys[pg.K_DOWN] or keys[pg.K_s]:
             self.vel = vec(-PLAYER_SPEED / 2, 0).rotate(-self.rot)
+        if keys[pg.K_SPACE]:
+            now = pg.time.get_ticks()
+            if now - self.last_shot > BULLET_RATE_DELAY:
+                self.last_shot = now
+                dir = vec(1, 0).rotate(-self.rot)
+                pos = self.pos + BARREL_OFFSET.rotate(-self.rot)
+                Bullet(self.game, pos, dir, self.rot, self.color)
+                self.vel = vec(-KICKBACK, 0).rotate(-self.rot)
 
     def move(self):
         if not self.collide_with_walls():
@@ -70,13 +103,65 @@ class Player(pg.sprite.Sprite):
         collide_with_walls(self, self.game.walls, 'y')
         self.rect.center = self.hit_rect.center
 
+        if self.health <= 0:
+            Explosion(self.game, self.pos)
+            self.kill()
+
+    def draw_health(self):
+        draw_health_box(self, PLAYER_HEALTH)
+
+
+class Bullet(pg.sprite.Sprite):
+    def __init__(self, game, pos, dir, rot, color):
+        self.groups = game.all_sprites, game.bullets
+        pg.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        self.image = pg.transform.rotate(game.bullet_images[color], rot)
+        self.rect = self.image.get_rect()
+        self.pos = vec(pos)
+        self.rect.center = pos
+        self.vel = dir * BULLET_SPEED
+        self.spawn_time = pg.time.get_ticks()
+
+    def update(self):
+        self.pos += self.vel * self.game.dt
+        self.rect.center = self.pos
+        if pg.sprite.spritecollideany(self, self.game.walls):
+            self.kill()
+        if pg.time.get_ticks() - self.spawn_time > BULLET_LIFETIME:
+            self.kill()
+
+
+class Explosion(pg.sprite.Sprite):
+    def __init__(self, game, pos):
+        self.groups = game.all_sprites, game.explosion
+        pg.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        self.image = game.other_images['explosion']
+        self.rect = self.image.get_rect()
+        self.pos = vec(pos)
+        self.rect.center = pos
+        self.spawn_time = now = pg.time.get_ticks()
+
+    def update(self):
+        elapsed_time = pg.time.get_ticks() - self.spawn_time
+        img_alpha = int((1 - (elapsed_time / EXPLOSION_TIME)) * 255)
+        self.image.set_alpha(img_alpha)
+        if elapsed_time > EXPLOSION_TIME:
+            self.kill()
+
 
 class Mob(pg.sprite.Sprite):
+    mob_counter = 0
     def __init__(self, game, x, y):
         self.groups = game.all_sprites, game.mobs
         pg.sprite.Sprite.__init__(self, self.groups)
         self.game = game
-        self.image_file = game.images['Red_Tank']
+        self.mob_ID = Mob.mob_counter
+        self.color = 'Red'
+        self.name = MOB_NAMES[self.mob_ID]
+        Mob.mob_counter += 1
+        self.image_file = game.tank_images[self.color]
         self.image = self.image_file
         self.rect = self.image.get_rect()
         self.hit_rect = MOB_HIT_RECTANGLE.copy()
@@ -86,6 +171,7 @@ class Mob(pg.sprite.Sprite):
         self.acc = vec(0, 0)
         self.rect.center = self.pos
         self.rot = RED_PLAYER_INITIAL_ROTATION
+        self.health = MOB_HEALTH
 
     def update(self):
         self.rot = (self.game.player.pos - self.pos).angle_to(vec(1, 0))
@@ -100,7 +186,19 @@ class Mob(pg.sprite.Sprite):
         collide_with_walls(self, self.game.walls, 'x')
         self.hit_rect.centery = self.pos.y
         collide_with_walls(self, self.game.walls, 'y')
+
+        #other_mob_entities = [x for i,x in enumerate(self.game.mobs.sprites()) if i != self.mob_ID]
+        #collide_with_walls(self, other_mob_entities, 'x')
+        #collide_with_walls(self, other_mob_entities, 'y')
+
         self.rect.center = self.hit_rect.center
+
+        if self.health <= 0:
+            Explosion(self.game, self.pos)
+            self.kill()
+
+    def draw_health(self):
+        draw_health_box(self, MOB_HEALTH)
 
 
 class Wall(pg.sprite.Sprite):

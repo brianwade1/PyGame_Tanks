@@ -1,4 +1,5 @@
 import pygame as pg
+vec = pg.math.Vector2
 
 # define some colors (R, G, B)
 WHITE = (255, 255, 255)
@@ -8,6 +9,27 @@ LIGHTGREY = (100, 100, 100)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
+
+# Images in folder
+Tank_images = {
+    'Red' : 'tank_red.png',
+    'Blue' : 'tank_blue.png',
+    'Green' : 'tank_green.png',
+    'Sand' : 'tank_sand.png',
+    'Dark' : 'tank_dark.png',
+}
+
+Bullet_images = {
+    'Red' : 'bulletRed1.png',
+    'Blue' : 'bulletBlue1.png',
+    'Green' : 'bulletGreen1.png',
+    'Sand' : 'bulletSand1.png',
+    'Dark' : 'bulletDark1.png',
+}
+
+Other_images = {
+    'explosion' : 'explosion2.png'
+}
 
 # game settings
 FPS = 60
@@ -20,15 +42,24 @@ TILESIZE = 24
 # Player settings
 PLAYER_SPEED = 200.0
 PLAYER_ROTATION_SPEED = 150.0
+PLAYER_HEALTH = 10
+
+# Gun settings
+BULLET_SPEED = 500
+BULLET_LIFETIME = 1000
+BULLET_RATE_DELAY = 500
+BULLET_DAMAGE = 1
+KICKBACK = 200
+BARREL_OFFSET = vec(20, 0)
+EXPLOSION_TIME = 1000
 
 # Image settings
-RED_PLAYER_IMAGE = 'tank_red.png'
 RED_PLAYER_INITIAL_ROTATION = 90
-BLUE_PLAYER_IMAGE = 'tank_blue.png'
 BLUE_PLAYER_INITIAL_ROTATION = 90
 PLAYER_HIT_RECTANGLE = pg.Rect(0, 0, 45, 45)
 
 # Mob settings
-MOB_IMG = RED_PLAYER_IMAGE
 MOB_SPEED = 150
+MOB_HEALTH = 2
 MOB_HIT_RECTANGLE = pg.Rect(0, 0, 45, 45)
+MOB_NAMES = ['Bob', 'Gary']

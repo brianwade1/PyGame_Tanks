@@ -6,8 +6,8 @@ import os
 from Tools.sprites import Player, Wall, Mob
 from Tools.data_loader import DataLoader
 from Config.settings import *
+from Tools.sprites import Explosion
 
-#config_file = 'setup_config.ini'
 
 class Game:
     def __init__(self):
@@ -25,7 +25,9 @@ class Game:
         pg.display.set_caption(TITLE)
 
         # Load images
-        self.images = self.dataloader.load_images()
+        self.tank_images = self.dataloader.load_images(Tank_images)
+        self.bullet_images = self.dataloader.load_images(Bullet_images)
+        self.other_images = self.dataloader.load_images(Other_images)
         
         # Set clock
         self.clock = pg.time.Clock()
@@ -41,8 +43,11 @@ class Game:
     def new(self):
         # initialize all variables and do all the setup for a new game
         self.all_sprites = pg.sprite.Group()
+        self.players = pg.sprite.Group()
         self.walls = pg.sprite.Group()
         self.mobs = pg.sprite.Group()
+        self.bullets = pg.sprite.Group()
+        self.explosion = pg.sprite.Group()
         self.open_spaces = []
         for row, tiles in enumerate(self.map_data):
             for col, tile in enumerate(tiles):
@@ -74,6 +79,11 @@ class Game:
     def update(self):
         # update portion of the game loop
         self.all_sprites.update()
+        # bullets hit mob
+        hits = pg.sprite.groupcollide(self.mobs, self.bullets, False, True)
+        for hit in hits:
+            hit.health -= BULLET_DAMAGE
+            hit.vel = vec(0,0)
 
 
     def draw_grid(self):
@@ -86,6 +96,10 @@ class Game:
     def draw(self):
         self.screen.fill(BACKGROUND_COLOR)
         self.draw_grid()
+        #self.all_sprites.draw(self.screen)
+        for sprite in self.all_sprites:
+            if isinstance(sprite, Mob) or isinstance(sprite, Player):
+                sprite.draw_health()
         self.all_sprites.draw(self.screen)
         pg.display.flip()
 
