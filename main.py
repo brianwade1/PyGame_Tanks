@@ -7,7 +7,12 @@ from Tools.sprites import Player, Wall, Mob
 from Tools.data_loader import DataLoader
 from Config.settings import *
 from Tools.sprites import Explosion
+from Tools.helper_methods import collide_hit_rect
 
+def hit_by_bullet(hit_sprites):
+        for hit_sprite in hit_sprites:
+            hit_sprite.health -= BULLET_DAMAGE
+            hit_sprite.vel = vec(0,0)
 
 class Game:
     def __init__(self):
@@ -32,13 +37,11 @@ class Game:
         # Set clock
         self.clock = pg.time.Clock()
 
-
     def get_map_dimensions(self):
         self.gridwidth = int(len(self.map_data[0].strip('\n')))
         self.gridheight = int(len(self.map_data))
         self.width = self.gridwidth * TILESIZE
         self.height = self.gridheight * TILESIZE
-
 
     def new(self):
         # initialize all variables and do all the setup for a new game
@@ -46,7 +49,8 @@ class Game:
         self.players = pg.sprite.Group()
         self.walls = pg.sprite.Group()
         self.mobs = pg.sprite.Group()
-        self.bullets = pg.sprite.Group()
+        self.player_bullets = pg.sprite.Group()
+        self.mob_bullets = pg.sprite.Group()
         self.explosion = pg.sprite.Group()
         self.open_spaces = []
         for row, tiles in enumerate(self.map_data):
@@ -60,7 +64,6 @@ class Game:
                 else:
                     self.open_spaces.append([row, col])
 
-
     def run(self):
         # game loop - set self.playing = False to end the game
         self.playing = True
@@ -70,28 +73,37 @@ class Game:
             self.update()
             self.draw()
 
-
     def quit(self):
         pg.quit()
         sys.exit()
 
-
     def update(self):
         # update portion of the game loop
         self.all_sprites.update()
+        # Mob hits
+        # hits = pg.sprite.spritecollide(self.player, self.mobs, False, collide_hit_rect)
+        # for hit in hits:
+        #     self.player.health -= MOB_DAMAGE
+        #     hit.vel = vec(0, 0)
+        #     if self.player.health <= 0:
+        #         self.playing = False
+        # if hits:
+        #     self.player.pos += vec(MOB_KNOCKBACK, 0).rotate(-hits[0].rot)
         # bullets hit mob
-        hits = pg.sprite.groupcollide(self.mobs, self.bullets, False, True)
-        for hit in hits:
-            hit.health -= BULLET_DAMAGE
-            hit.vel = vec(0,0)
-
+        hits = pg.sprite.groupcollide(self.mobs, self.player_bullets, False, True)
+        if hits:
+            hit_by_bullet(hits)
+        # bullets hit player
+        hits = pg.sprite.groupcollide(self.players, self.mob_bullets, False, True)
+        if hits:
+            hit_by_bullet(hits)
+        
 
     def draw_grid(self):
         for x in range(0, self.width, TILESIZE):
             pg.draw.line(self.screen, GRID_COLOR, (x, 0), (x, self.height))
         for y in range(0, self.height, TILESIZE):
             pg.draw.line(self.screen, GRID_COLOR, (0, y), (self.width, y))
-
 
     def draw(self):
         self.screen.fill(BACKGROUND_COLOR)
@@ -103,7 +115,6 @@ class Game:
         self.all_sprites.draw(self.screen)
         pg.display.flip()
 
-
     def events(self):
         # catch all events here
         for event in pg.event.get():
@@ -112,7 +123,6 @@ class Game:
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_ESCAPE:
                     self.quit()
-
 
 if __name__ == '__main__':
     # create the game object
