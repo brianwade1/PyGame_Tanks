@@ -180,11 +180,17 @@ class Mob(pg.sprite.Sprite):
         self.health = MOB_HEALTH
 
     def shoot_at_sprite(self, sprite_target): 
-        angle_to_sprite = (sprite_target.pos - self.pos).angle_to(vec(1, 0))
-        dis_to_sprite = self.pos.distance_to(sprite_target.pos)
-        if abs(angle_to_sprite - self.rot) <= SHOOT_CONE and dis_to_sprite <= SHOOT_DISTANCE:
-            shoot_bullet(self)
-
+        line_of_sight = True
+        for wall in self.game.walls:
+            cropped_line = wall.rect.clipline(self.pos, sprite_target.pos)
+            if len(cropped_line) != 0:
+                line_of_sight = False
+                break
+        if line_of_sight:
+            angle_to_sprite = (sprite_target.pos - self.pos).angle_to(vec(1, 0))
+            dis_to_sprite = self.pos.distance_to(sprite_target.pos)
+            if abs(angle_to_sprite - self.rot) <= SHOOT_CONE: 
+                shoot_bullet(self)
 
     def update(self):
         self.rot = (self.game.player.pos - self.pos).angle_to(vec(1, 0))
