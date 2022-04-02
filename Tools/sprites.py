@@ -206,7 +206,8 @@ class Mob(pg.sprite.Sprite):
         self.hit_rect.centery = self.pos.y
         collide_with_walls(self, self.game.walls, 'y')
 
-        other_mob_entities = [x for i,x in enumerate(self.game.mobs.sprites()) if i != self.mob_ID]
+        all_mob_entities = [x for x in self.game.mobs.sprites()]
+        other_mob_entities = [x for x in all_mob_entities if x.mob_ID != self.mob_ID]
         collide_with_walls(self, other_mob_entities, 'x')
         collide_with_walls(self, other_mob_entities, 'y')
 

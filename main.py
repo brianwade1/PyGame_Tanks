@@ -97,6 +97,8 @@ class Game:
         hits = pg.sprite.groupcollide(self.players, self.mob_bullets, False, True)
         if hits:
             hit_by_bullet(hits)
+        if self.player.health <= 0:
+            self.playing = False
         
 
     def draw_grid(self):
