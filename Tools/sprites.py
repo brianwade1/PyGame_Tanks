@@ -57,6 +57,7 @@ class Player(pg.sprite.Sprite):
         self.image_file = game.tank_images[self.color]
         self.image = self.image_file
         self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
         self.hit_rect = PLAYER_HIT_RECTANGLE.copy()
         self.hit_rect.center = self.rect.center
         self.vel = vec(0, 0)
@@ -169,6 +170,7 @@ class Mob(pg.sprite.Sprite):
         self.image_file = game.tank_images[self.color]
         self.image = self.image_file
         self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
         self.hit_rect = MOB_HIT_RECTANGLE.copy()
         self.hit_rect.center = self.rect.center
         self.pos = vec(x, y) * TILESIZE
@@ -230,6 +232,7 @@ class Wall(pg.sprite.Sprite):
         self.image = pg.Surface((TILESIZE, TILESIZE))
         self.image.fill(GREEN)
         self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
         self.x = x
         self.y = y
         self.rect.x = x * TILESIZE
