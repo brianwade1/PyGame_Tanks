@@ -28,7 +28,8 @@ Bullet_images = {
 }
 
 Other_images = {
-    'explosion' : 'explosion2.png'
+    'explosion' : 'explosion2.png',
+    'muzzle_flash' : 'shotThin.png'
 }
 
 # game settings
@@ -50,8 +51,10 @@ BULLET_LIFETIME = 1000
 BULLET_RATE_DELAY = 500
 BULLET_DAMAGE = 1
 KICKBACK = 50
-BARREL_OFFSET = vec(20, 0)
+BARREL_OFFSET = vec(30, 0)
 EXPLOSION_TIME = 1000
+MUZZLE_FLASH_SIZE = (20, 10)
+FLASH_DURATION = 40
 
 # Image settings
 RED_PLAYER_INITIAL_ROTATION = 90
@@ -66,3 +69,10 @@ MOB_NAMES = ['Bob', 'Gary']
 MOB_DAMAGE = 1
 MOB_KNOCKBACK = 20
 SHOOT_CONE = 5
+
+# Draw Layers
+WALL_LAYER = 1
+PLAYER_LAYER = 2
+MOB_LAYER = 2
+BULLET_LAYER = 3
+EFFECT_LAYER = 4

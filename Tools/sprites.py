@@ -46,10 +46,12 @@ def shoot_bullet(sprit):
         pos = sprit.pos + BARREL_OFFSET.rotate(-sprit.rot)
         Bullet(sprit, pos, dir)
         sprit.vel = vec(-KICKBACK, 0).rotate(-sprit.rot)
+        MuzzleFlash(sprit, pos)
 
 
 class Player(pg.sprite.Sprite):
     def __init__(self, game, x, y):
+        self._layer = PLAYER_LAYER
         self.groups = game.all_sprites, game.players
         pg.sprite.Sprite.__init__(self, self.groups)
         self.game = game
@@ -116,6 +118,7 @@ class Player(pg.sprite.Sprite):
 
 class Bullet(pg.sprite.Sprite):
     def __init__(self, sprite, pos, dir):
+        self._layer = BULLET_LAYER
         if isinstance(sprite, Mob):
             self.groups = sprite.game.all_sprites, sprite.game.mob_bullets
         else:
@@ -140,6 +143,7 @@ class Bullet(pg.sprite.Sprite):
 
 class Explosion(pg.sprite.Sprite):
     def __init__(self, game, pos):
+        self._layer = EFFECT_LAYER
         self.groups = game.all_sprites, game.explosion
         pg.sprite.Sprite.__init__(self, self.groups)
         self.game = game
@@ -160,6 +164,7 @@ class Explosion(pg.sprite.Sprite):
 class Mob(pg.sprite.Sprite):
     mob_counter = 0
     def __init__(self, game, x, y):
+        self._layer = MOB_LAYER
         self.groups = game.all_sprites, game.mobs
         pg.sprite.Sprite.__init__(self, self.groups)
         self.game = game
@@ -226,6 +231,7 @@ class Mob(pg.sprite.Sprite):
 
 class Wall(pg.sprite.Sprite):
     def __init__(self, game, x, y):
+        self._layer = WALL_LAYER
         self.groups = game.all_sprites, game.walls
         pg.sprite.Sprite.__init__(self, self.groups)
         self.game = game
@@ -237,3 +243,25 @@ class Wall(pg.sprite.Sprite):
         self.y = y
         self.rect.x = x * TILESIZE
         self.rect.y = y * TILESIZE
+
+
+class MuzzleFlash(pg.sprite.Sprite):
+    def __init__(self, sprite, pos):
+        self._layer = EFFECT_LAYER
+        self.groups = sprite.game.all_sprites
+        pg.sprite.Sprite.__init__(self, self.groups)
+        self.game = sprite.game
+        #size = randint(20, 50)
+        scaled_image = pg.transform.scale(self.game.other_images['muzzle_flash'], MUZZLE_FLASH_SIZE)
+        self.image = pg.transform.rotate(scaled_image, sprite.rot)
+        self.rect = self.image.get_rect()
+        self.pos = pos
+        self.vel = sprite.vel
+        self.rect.center = pos
+        self.spawn_time = pg.time.get_ticks()
+
+    def update(self):
+        if pg.time.get_ticks() - self.spawn_time > FLASH_DURATION:
+            self.kill()
+        else:
+            self.pos += self.vel * self.game.dt
