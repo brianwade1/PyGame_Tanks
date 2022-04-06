@@ -57,7 +57,7 @@ class Player(pg.sprite.Sprite):
         self.game = game
         self.color = 'Blue'
         self.image_file = game.tank_images[self.color]
-        self.image = self.image_file
+        self.image = self.image_file.copy()
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
         self.hit_rect = PLAYER_HIT_RECTANGLE.copy()
@@ -170,10 +170,9 @@ class Mob(pg.sprite.Sprite):
         self.game = game
         self.mob_ID = Mob.mob_counter
         self.color = 'Red'
-        self.name = MOB_NAMES[self.mob_ID]
         Mob.mob_counter += 1
         self.image_file = game.tank_images[self.color]
-        self.image = self.image_file
+        self.image = self.image_file.copy()
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
         self.hit_rect = MOB_HIT_RECTANGLE.copy()

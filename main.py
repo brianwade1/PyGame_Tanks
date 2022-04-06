@@ -80,24 +80,21 @@ class Game:
     def update(self):
         # update portion of the game loop
         self.all_sprites.update()
-        # Mob hits
-        # hits = pg.sprite.spritecollide(self.player, self.mobs, False, collide_hit_rect)
-        # for hit in hits:
-        #     self.player.health -= MOB_DAMAGE
-        #     hit.vel = vec(0, 0)
-        #     if self.player.health <= 0:
-        #         self.playing = False
-        # if hits:
-        #     self.player.pos += vec(MOB_KNOCKBACK, 0).rotate(-hits[0].rot)
+
         # bullets hit mob
         hits = pg.sprite.groupcollide(self.mobs, self.player_bullets, False, True)
         if hits:
             hit_by_bullet(hits)
+            
         # bullets hit player
         hits = pg.sprite.groupcollide(self.players, self.mob_bullets, False, True)
         if hits:
             hit_by_bullet(hits)
         if self.player.health <= 0:
+            self.playing = False
+
+        # if all enemy killed, end game
+        if not self.mobs:
             self.playing = False
         
 
