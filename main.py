@@ -33,6 +33,12 @@ def hit_goal(sprites_on_goal):
         goal.kill()
         Goal(g, new_location[0], new_location[1])
 
+def draw_text(surf, text, size, x, y):
+    font = pg.font.Font(FONT_NAME, size)
+    text_surface = font.render(text, True, WHITE)
+    text_rect = text_surface.get_rect()
+    text_rect.midtop = (x, y)
+    surf.blit(text_surface, text_rect)
 
 class Game:
     def __init__(self):
@@ -147,6 +153,8 @@ class Game:
             if isinstance(sprite, Mob) or isinstance(sprite, Player):
                 sprite.draw_health()
         self.all_sprites.draw(self.screen)
+        score_string = f"Blue: {self.score['Blue']}  Red: {self.score['Red']}"
+        draw_text(self.screen, score_string, FONT_SIZE, self.width / 2, 1)
         pg.display.flip()
 
     def events(self):

@@ -70,14 +70,6 @@ class Player(pg.sprite.Sprite):
         self.health = PLAYER_HEALTH
 
     def get_keys(self):
-        # for event in pg.event.get():
-        #     if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
-        #         dir = vec(1, 0).rotate(-self.rot)
-        #         pos = self.pos #+ BARREL_OFFSET.rotate(-self.rot)
-        #         Bullet(self.game, pos, dir, self.rot, self.color)
-        #         self.vel = vec(-KICKBACK, 0).rotate(-self.rot)
-
-
         self.vel = vec(0, 0)
         self.rot_speed = 0
         keys = pg.key.get_pressed()

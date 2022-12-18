@@ -81,3 +81,7 @@ PLAYER_LAYER = 2
 MOB_LAYER = 2
 BULLET_LAYER = 3
 EFFECT_LAYER = 4
+
+# Score Settings
+FONT_NAME = pg.font.match_font('arial')
+FONT_SIZE = 18
