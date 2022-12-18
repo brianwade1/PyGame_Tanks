@@ -1,6 +1,6 @@
 import pygame as pg
 from Config.settings import *
-from Tools.helper_methods import collide_hit_rect
+from Tools.helper_methods import collide_hit_rect, draw_text
 
 vec = pg.math.Vector2
 
@@ -24,7 +24,6 @@ def collide_with_walls(sprite, group, dir):
             sprite.vel.y = 0
             sprite.hit_rect.centery = sprite.pos.y
 
-
 def draw_health_box(sprite, full_health):
     if sprite.health > 0.6 * full_health:
         col = GREEN
@@ -38,16 +37,27 @@ def draw_health_box(sprite, full_health):
     if sprite.health < full_health:
         pg.draw.rect(sprite.image, col, sprite.health_bar)
 
+def draw_bullet_number(sprite, full_bullets):
+    if sprite.bullets > 0.6 * full_bullets:
+        col = GREEN
+    elif sprite.bullets > 0.3 * full_bullets:
+        col = YELLOW
+    else:
+        col = RED
+    bullet_count = str(sprite.bullets)
+    pos = vec(sprite.image.get_width() / 2, sprite.image.get_height() / 2) - vec(sprite.image.get_width() * 0.3, 0).rotate(-sprite.rot)
+    draw_text(sprite.image, bullet_count, col, 14, pos[0], pos[1], 270+sprite.rot)
+
 def shoot_bullet(sprit):
     now = pg.time.get_ticks()
-    if now - sprit.last_shot > BULLET_RATE_DELAY:
+    if (now - sprit.last_shot > BULLET_RATE_DELAY) and (sprit.bullets > 0):
         sprit.last_shot = now
         dir = vec(1, 0).rotate(-sprit.rot)
         pos = sprit.pos + BARREL_OFFSET.rotate(-sprit.rot)
         Bullet(sprit, pos, dir)
         sprit.vel = vec(-KICKBACK, 0).rotate(-sprit.rot)
         MuzzleFlash(sprit, pos)
-
+        sprit.bullets -= 1
 
 class Player(pg.sprite.Sprite):
     player_points = 0
@@ -68,6 +78,7 @@ class Player(pg.sprite.Sprite):
         self.rot = BLUE_PLAYER_INITIAL_ROTATION
         self.last_shot = 0
         self.health = PLAYER_HEALTH
+        self.bullets = PLAYER_BULLETS
 
     def get_keys(self):
         self.vel = vec(0, 0)
@@ -107,6 +118,9 @@ class Player(pg.sprite.Sprite):
 
     def draw_health(self):
         draw_health_box(self, PLAYER_HEALTH)
+
+    def draw_bullet_counter(self):
+        draw_bullet_number(self, PLAYER_BULLETS)
 
 
 class Bullet(pg.sprite.Sprite):
@@ -178,6 +192,7 @@ class Mob(pg.sprite.Sprite):
         self.rot = RED_PLAYER_INITIAL_ROTATION
         self.last_shot = 0
         self.health = MOB_HEALTH
+        self.bullets = MOB_BULLETS
 
     def shoot_at_sprite(self, sprite_target): 
         line_of_sight = True
@@ -220,6 +235,9 @@ class Mob(pg.sprite.Sprite):
 
     def draw_health(self):
         draw_health_box(self, MOB_HEALTH)
+
+    def draw_bullet_counter(self):
+        draw_bullet_number(self, MOB_HEALTH)
 
 
 class Wall(pg.sprite.Sprite):
