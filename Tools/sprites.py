@@ -50,9 +50,10 @@ def shoot_bullet(sprit):
 
 
 class Player(pg.sprite.Sprite):
+    player_points = 0
     def __init__(self, game, x, y):
         self._layer = PLAYER_LAYER
-        self.groups = game.all_sprites, game.players
+        self.groups = game.all_sprites, game.players, game.movers
         pg.sprite.Sprite.__init__(self, self.groups)
         self.game = game
         self.color = 'Blue'
@@ -163,9 +164,10 @@ class Explosion(pg.sprite.Sprite):
 
 class Mob(pg.sprite.Sprite):
     mob_counter = 0
+    mod_points = 0
     def __init__(self, game, x, y):
         self._layer = MOB_LAYER
-        self.groups = game.all_sprites, game.mobs
+        self.groups = game.all_sprites, game.mobs, game.movers
         pg.sprite.Sprite.__init__(self, self.groups)
         self.game = game
         self.mob_ID = Mob.mob_counter
@@ -242,6 +244,19 @@ class Wall(pg.sprite.Sprite):
         self.y = y
         self.rect.x = x * TILESIZE
         self.rect.y = y * TILESIZE
+
+
+class Goal(pg.sprite.Sprite):
+    def __init__(self, game, x, y):
+        self._layer = PLAYER_LAYER
+        self.groups = game.all_sprites, game.goals
+        pg.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        self.pos = (vec(x, y) * TILESIZE) + vec(TILESIZE / 2, TILESIZE / 2)
+        self.image_file = game.other_images['goal']
+        self.image = pg.transform.scale_by(self.image_file.copy(), 0.5)
+        self.rect = self.image.get_rect()
+        self.rect.center = self.pos
 
 
 class MuzzleFlash(pg.sprite.Sprite):

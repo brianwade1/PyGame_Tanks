@@ -1,18 +1,38 @@
-import pygame as pg
+# Standard Library Imports
 import sys
 import os
+import random
+
+# Conda imports
+import pygame as pg
 
 # Functions in other scripts of this repo
-from Tools.sprites import Player, Wall, Mob
+from Tools.sprites import Player, Wall, Mob, Goal
 from Tools.data_loader import DataLoader
 from Config.settings import *
 from Tools.sprites import Explosion
 from Tools.helper_methods import collide_hit_rect
 
+# Functions used by multiple classes
 def hit_by_bullet(hit_sprites):
         for hit_sprite in hit_sprites:
             hit_sprite.health -= BULLET_DAMAGE
             hit_sprite.vel = vec(0,0)
+
+def hit_goal(sprites_on_goal):
+    for sprite_on_goal in sprites_on_goal:
+        if sprite_on_goal in g.players:
+            g.score['Blue'] += GOAL_POINTS
+        elif sprite_on_goal in g.mobs:
+            g.score['Red'] += GOAL_POINTS
+    for goal in sprites_on_goal[sprite_on_goal]:
+        # Get possible spawn locations far enough away
+        possible_locs = [pos for pos in g.open_spaces if goal.pos.distance_to(vec(pos) * TILESIZE) >= GOAL_SPAWN_MIN_DIST]
+        new_location = random.choice(possible_locs)
+        # Kill current goal and re-spawn a new goal
+        goal.kill()
+        Goal(g, new_location[0], new_location[1])
+
 
 class Game:
     def __init__(self):
@@ -37,6 +57,9 @@ class Game:
         # Set clock
         self.clock = pg.time.Clock()
 
+        # Set Score
+        self.score = {'Blue': 0, 'Red': 0}
+
     def get_map_dimensions(self):
         self.gridwidth = int(len(self.map_data[0].strip('\n')))
         self.gridheight = int(len(self.map_data))
@@ -49,20 +72,28 @@ class Game:
         self.players = pg.sprite.Group()
         self.walls = pg.sprite.Group()
         self.mobs = pg.sprite.Group()
+        self.movers = pg.sprite.Group()
+        self.goals = pg.sprite.Group()
         self.player_bullets = pg.sprite.Group()
         self.mob_bullets = pg.sprite.Group()
         self.explosion = pg.sprite.Group()
+        self.open_pos = []
         self.open_spaces = []
         for row, tiles in enumerate(self.map_data):
             for col, tile in enumerate(tiles):
                 if tile == '1':
                     Wall(self, col, row)
-                if tile == 'P':
+                elif tile == 'P':
                     self.player = Player(self, col, row)
-                if tile == 'M':
+                elif tile == 'M':
                     Mob(self, col, row)
+                elif tile == 'G':
+                    Goal(self, col, row)
+                elif tile =='\n' or tile == '\r\n':
+                    continue
                 else:
-                    self.open_spaces.append([row, col])
+                    self.open_spaces.append([col, row])
+                    self.open_pos.append(vec(col, row) * TILESIZE)
 
     def run(self):
         # game loop - set self.playing = False to end the game
@@ -93,10 +124,14 @@ class Game:
         if self.player.health <= 0:
             self.playing = False
 
+        # Player hits goal
+        sprites_on_goal = pg.sprite.groupcollide(self.movers, self.goals, False, True)
+        if sprites_on_goal:
+            hit_goal(sprites_on_goal)
+
         # if all enemy killed, end game
         if not self.mobs:
             self.playing = False
-        
 
     def draw_grid(self):
         for x in range(0, self.width, TILESIZE):
@@ -122,6 +157,7 @@ class Game:
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_ESCAPE:
                     self.quit()
+
 
 if __name__ == '__main__':
     # create the game object

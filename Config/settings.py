@@ -29,7 +29,8 @@ Bullet_images = {
 
 Other_images = {
     'explosion' : 'explosion2.png',
-    'muzzle_flash' : 'shotThin.png'
+    'muzzle_flash' : 'shotThin.png',
+    'goal' : 'explosion1.png'
 }
 
 # game settings
@@ -68,6 +69,11 @@ MOB_HIT_RECTANGLE = pg.Rect(0, 0, 45, 45)
 MOB_DAMAGE = 1
 MOB_KNOCKBACK = 20
 SHOOT_CONE = 5
+
+# Goal settings
+GOAL_HIT_RECTANGLE = pg.Rect(0, 0, 15, 15)
+GOAL_POINTS = 1
+GOAL_SPAWN_MIN_DIST = 100
 
 # Draw Layers
 WALL_LAYER = 1
