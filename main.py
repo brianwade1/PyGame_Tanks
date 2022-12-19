@@ -19,6 +19,11 @@ def hit_by_bullet(hit_sprites):
             hit_sprite.health -= BULLET_DAMAGE
             hit_sprite.vel = vec(0,0)
 
+            if hit_sprite in g.players:
+                g.score['Red'] += HIT_POINTS
+            elif hit_sprite in g.mobs:
+                g.score['Blue'] += HIT_POINTS
+
 def hit_goal(sprites_on_goal):
     for sprite_on_goal in sprites_on_goal:
         if sprite_on_goal in g.players:
@@ -57,9 +62,6 @@ class Game:
         # Set clock
         self.clock = pg.time.Clock()
 
-        # Set Score
-        self.score = {'Blue': 0, 'Red': 0}
-
     def get_map_dimensions(self):
         self.gridwidth = int(len(self.map_data[0].strip('\n')))
         self.gridheight = int(len(self.map_data))
@@ -94,6 +96,9 @@ class Game:
                 else:
                     self.open_spaces.append([col, row])
                     self.open_pos.append(vec(col, row) * TILESIZE)
+
+        # Set Score
+        self.score = {'Blue': 0, 'Red': 0}
 
     def run(self):
         # game loop - set self.playing = False to end the game

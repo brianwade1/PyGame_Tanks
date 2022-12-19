@@ -75,7 +75,6 @@ MOB_BULLETS = 10
 
 # Goal settings
 GOAL_HIT_RECTANGLE = pg.Rect(0, 0, 15, 15)
-GOAL_POINTS = 1
 GOAL_SPAWN_MIN_DIST = 100
 
 # Draw Layers
@@ -88,3 +87,7 @@ EFFECT_LAYER = 4
 # Score Settings
 FONT_NAME = pg.font.match_font('arial')
 FONT_SIZE = 18
+
+# Points in game
+GOAL_POINTS = 3
+HIT_POINTS = 1

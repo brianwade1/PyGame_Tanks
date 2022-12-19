@@ -237,7 +237,7 @@ class Mob(pg.sprite.Sprite):
         draw_health_box(self, MOB_HEALTH)
 
     def draw_bullet_counter(self):
-        draw_bullet_number(self, MOB_BULLET)
+        draw_bullet_number(self, MOB_BULLETS)
 
 
 class Wall(pg.sprite.Sprite):
