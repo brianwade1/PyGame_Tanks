@@ -30,7 +30,8 @@ Bullet_images = {
 Other_images = {
     'explosion' : 'explosion2.png',
     'muzzle_flash' : 'shotThin.png',
-    'goal' : 'explosion1.png'
+    'goal' : 'explosion1.png',
+    'ammo' : 'crateWood.png'
 }
 
 # game settings
@@ -74,15 +75,20 @@ SHOOT_CONE = 5
 MOB_BULLETS = 10
 
 # Goal settings
-GOAL_HIT_RECTANGLE = pg.Rect(0, 0, 15, 15)
 GOAL_SPAWN_MIN_DIST = 100
+
+# Item settings
+AMMO_BULLETS = 5
+#AMMO_SPAWN_DIST = 100
+AMMO_RESPAWN_TIME = 8000
 
 # Draw Layers
 WALL_LAYER = 1
-PLAYER_LAYER = 2
-MOB_LAYER = 2
-BULLET_LAYER = 3
-EFFECT_LAYER = 4
+ITEM_LAYER = 2
+PLAYER_LAYER = 3
+MOB_LAYER = 3
+BULLET_LAYER = 4
+EFFECT_LAYER = 5
 
 # Score Settings
 FONT_NAME = pg.font.match_font('arial')

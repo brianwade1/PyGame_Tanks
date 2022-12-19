@@ -7,7 +7,7 @@ import random
 import pygame as pg
 
 # Functions in other scripts of this repo
-from Tools.sprites import Player, Wall, Mob, Goal
+from Tools.sprites import Player, Wall, Mob, Goal, Ammo
 from Tools.data_loader import DataLoader
 from Config.settings import *
 from Tools.sprites import Explosion
@@ -38,6 +38,29 @@ def hit_goal(sprites_on_goal):
         goal.kill()
         Goal(g, new_location[0], new_location[1])
 
+def hit_ammo(sprites_on_ammo):
+    #do_ammo_move = False
+    for sprite_on_ammo in sprites_on_ammo:
+        ammo_needs_respawn = False
+        sprite_ammo = sprites_on_ammo[sprite_on_ammo][0]
+        if sprite_ammo.available:
+            if sprite_on_ammo in g.players and sprite_on_ammo.bullets < PLAYER_BULLETS:
+                sprite_on_ammo.bullets += AMMO_BULLETS
+                #do_ammo_move = True
+                ammo_needs_respawn = True
+                if sprite_on_ammo.bullets > PLAYER_BULLETS:
+                    sprite_on_ammo.bullets = PLAYER_BULLETS
+            if sprite_on_ammo in g.mobs and sprite_on_ammo.bullets < MOB_BULLETS:
+                sprite_on_ammo.bullets += AMMO_BULLETS
+                #do_ammo_move = True
+                ammo_needs_respawn = True
+                if sprite_on_ammo.bullets > MOB_BULLETS:
+                    sprite_on_ammo.bullets = MOB_BULLETS
+            if ammo_needs_respawn:
+                sprite_ammo.hit_time = pg.time.get_ticks()
+                sprite_ammo.available = False
+                sprite_ammo.image.set_alpha(0)
+  
 
 class Game:
     def __init__(self):
@@ -76,6 +99,7 @@ class Game:
         self.mobs = pg.sprite.Group()
         self.movers = pg.sprite.Group()
         self.goals = pg.sprite.Group()
+        self.items = pg.sprite.Group()
         self.player_bullets = pg.sprite.Group()
         self.mob_bullets = pg.sprite.Group()
         self.explosion = pg.sprite.Group()
@@ -91,6 +115,8 @@ class Game:
                     Mob(self, col, row)
                 elif tile == 'G':
                     Goal(self, col, row)
+                elif tile == 'A':
+                    Ammo(self, col, row)
                 elif tile =='\n' or tile == '\r\n':
                     continue
                 else:
@@ -129,10 +155,15 @@ class Game:
         if self.player.health <= 0:
             self.playing = False
 
-        # Player hits goal
+        # Player or Mob hits goal
         sprites_on_goal = pg.sprite.groupcollide(self.movers, self.goals, False, True)
         if sprites_on_goal:
             hit_goal(sprites_on_goal)
+
+        # Player or Mob hits ammo
+        sprites_on_ammo = pg.sprite.groupcollide(self.movers, self.items, False, False)
+        if sprites_on_ammo:
+            hit_ammo(sprites_on_ammo)
 
         # if all enemy killed, end game
         if not self.mobs:

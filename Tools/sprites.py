@@ -258,7 +258,7 @@ class Wall(pg.sprite.Sprite):
 
 class Goal(pg.sprite.Sprite):
     def __init__(self, game, x, y):
-        self._layer = PLAYER_LAYER
+        self._layer = ITEM_LAYER
         self.groups = game.all_sprites, game.goals
         pg.sprite.Sprite.__init__(self, self.groups)
         self.game = game
@@ -268,6 +268,27 @@ class Goal(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = self.pos
 
+        
+class Ammo(pg.sprite.Sprite):
+    def __init__(self, game, x, y):
+        self._layer = ITEM_LAYER
+        self.groups = game.all_sprites, game.items
+        pg.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        self.pos = (vec(x, y) * TILESIZE) + vec(TILESIZE / 2, TILESIZE / 2)
+        self.image_file = game.other_images['ammo']
+        self.image = pg.transform.scale_by(self.image_file.copy(), 0.5)
+        self.rect = self.image.get_rect()
+        self.rect.center = self.pos
+        self.available = True
+        self.hit_time = 0.
+
+    def update(self):
+        if self.available == False:
+            if pg.time.get_ticks() - self.hit_time > AMMO_RESPAWN_TIME:
+                self.available = True
+                self.image.set_alpha(255)
+            
 
 class MuzzleFlash(pg.sprite.Sprite):
     def __init__(self, sprite, pos):
