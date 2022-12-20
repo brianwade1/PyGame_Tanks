@@ -299,7 +299,8 @@ class Health(pg.sprite.Sprite):
         self.game = game
         self.pos = (vec(x, y) * TILESIZE) + vec(TILESIZE / 2, TILESIZE / 2)
         self.image_file = game.other_images['health']
-        self.image = pg.transform.scale_by(self.image_file.copy(), 0.5)
+        #self.image = pg.transform.scale_by(self.image_file.copy(), 0.5)
+        self.image = self.image_file.copy()
         self.rect = self.image.get_rect()
         self.rect.center = self.pos
         self.available = True

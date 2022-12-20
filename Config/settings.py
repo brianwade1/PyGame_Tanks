@@ -32,7 +32,7 @@ Other_images = {
     'muzzle_flash' : 'shotThin.png',
     'goal' : 'explosion1.png',
     'ammo' : 'crateWood.png',
-    'health' : 'barrelGreen_side.png'
+    'health' : 'HealthPack.png'
 }
 
 # game settings
