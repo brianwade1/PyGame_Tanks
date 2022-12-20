@@ -31,7 +31,8 @@ Other_images = {
     'explosion' : 'explosion2.png',
     'muzzle_flash' : 'shotThin.png',
     'goal' : 'explosion1.png',
-    'ammo' : 'crateWood.png'
+    'ammo' : 'crateWood.png',
+    'health' : 'barrelGreen_side.png'
 }
 
 # game settings
@@ -67,7 +68,7 @@ COUNTER_OFFSET = vec(30, 0)
 
 # Mob settings
 MOB_SPEED = 150
-MOB_HEALTH = 2
+MOB_HEALTH = 5
 MOB_HIT_RECTANGLE = pg.Rect(0, 0, 45, 45)
 MOB_DAMAGE = 1
 MOB_KNOCKBACK = 20
@@ -81,6 +82,8 @@ GOAL_SPAWN_MIN_DIST = 100
 AMMO_BULLETS = 5
 #AMMO_SPAWN_DIST = 100
 AMMO_RESPAWN_TIME = 8000
+HEALTH_ADD = 3
+HEALTH_RESPAWN_TIME = 10000
 
 # Draw Layers
 WALL_LAYER = 1

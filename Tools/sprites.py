@@ -59,6 +59,7 @@ def shoot_bullet(sprit):
         MuzzleFlash(sprit, pos)
         sprit.bullets -= 1
 
+
 class Player(pg.sprite.Sprite):
     player_points = 0
     def __init__(self, game, x, y):
@@ -272,7 +273,7 @@ class Goal(pg.sprite.Sprite):
 class Ammo(pg.sprite.Sprite):
     def __init__(self, game, x, y):
         self._layer = ITEM_LAYER
-        self.groups = game.all_sprites, game.items
+        self.groups = game.all_sprites, game.ammo_boxes
         pg.sprite.Sprite.__init__(self, self.groups)
         self.game = game
         self.pos = (vec(x, y) * TILESIZE) + vec(TILESIZE / 2, TILESIZE / 2)
@@ -286,6 +287,27 @@ class Ammo(pg.sprite.Sprite):
     def update(self):
         if self.available == False:
             if pg.time.get_ticks() - self.hit_time > AMMO_RESPAWN_TIME:
+                self.available = True
+                self.image.set_alpha(255)
+
+
+class Health(pg.sprite.Sprite):
+    def __init__(self, game, x, y):
+        self._layer = ITEM_LAYER
+        self.groups = game.all_sprites, game.health_kits
+        pg.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        self.pos = (vec(x, y) * TILESIZE) + vec(TILESIZE / 2, TILESIZE / 2)
+        self.image_file = game.other_images['health']
+        self.image = pg.transform.scale_by(self.image_file.copy(), 0.5)
+        self.rect = self.image.get_rect()
+        self.rect.center = self.pos
+        self.available = True
+        self.hit_time = 0.
+
+    def update(self):
+        if self.available == False:
+            if pg.time.get_ticks() - self.hit_time > HEALTH_RESPAWN_TIME:
                 self.available = True
                 self.image.set_alpha(255)
             
