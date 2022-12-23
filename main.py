@@ -2,6 +2,7 @@
 import sys
 import os
 import random
+import time
 
 # Conda imports
 import pygame as pg
@@ -153,14 +154,35 @@ class Game:
         # Set Score
         self.score = {'Blue': 0, 'Red': 0}
 
+        # Set clock
+        minutes = GAME_TIME_LIMIT // 60
+        seconds = GAME_TIME_LIMIT - (60 * minutes)
+        self.minutes = minutes
+        self.seconds = seconds
+        self.milliseconds = 0
+        self.time_countdown = GAME_TIME_LIMIT * 1000 # convert to milliseconds
+
     def run(self):
         # game loop - set self.playing = False to end the game
         self.playing = True
         while self.playing:
-            self.dt = self.clock.tick(FPS) / 1000
+            self.dt_ms = self.clock.tick(FPS)
+            self.dt = self.dt_ms / 1000
             self.events()
             self.update()
+            self.timer()
             self.draw()
+
+        game_over_waiting = True
+        wait_time = 1000
+        self.draw()
+        while game_over_waiting:
+            self.dt_ms = self.clock.tick(FPS)
+            self.game_over()
+            self.events()
+            wait_time -= self.dt_ms
+            if wait_time <= 0:
+                game_over_waiting = False
 
     def quit(self):
         pg.quit()
@@ -180,6 +202,7 @@ class Game:
         if hits:
             hit_by_bullet(hits)
         if self.player.health <= 0:
+            Explosion(self, self.player.pos)
             self.playing = False
 
         # Player or Mob hits goal
@@ -216,9 +239,29 @@ class Game:
                 sprite.draw_health()
                 sprite.draw_bullet_counter()
         self.all_sprites.draw(self.screen)
+
+        # draw score string at top
         score_string = f"Blue: {self.score['Blue']}  Red: {self.score['Red']}"
-        draw_text(self.screen, score_string, WHITE, FONT_SIZE, self.width / 2, 1, 0)
+        draw_text(self.screen, score_string, WHITE, FONT_SIZE, self.width / 3, 1, 0)
+
+        # draw timer at top
+        time_string = f"Minutes: {self.minutes} Seconds: {self.seconds}"
+        draw_text(self.screen, time_string, WHITE, FONT_SIZE, 2 * self.width / 3, 1, 0)
+
         pg.display.flip()
+
+    def timer(self):
+        if self.milliseconds > 1000:
+            self.seconds -= 1
+            self.milliseconds -= 1000
+        if self.seconds < 0:
+            self.minutes -= 1
+            self.seconds = 60
+
+        self.time_countdown -= self.dt_ms
+        self.milliseconds += self.dt_ms
+        if self.time_countdown <= 0:
+            self.playing = False
 
     def events(self):
         # catch all events here
@@ -229,6 +272,9 @@ class Game:
                 if event.key == pg.K_ESCAPE:
                     self.quit()
 
+    def game_over(self):
+        draw_text(self.screen, "GAME OVER", RED, 2 * FONT_SIZE, self.width / 2, self.height / 2, 0)
+        pg.display.flip()
 
 if __name__ == '__main__':
     # create the game object
