@@ -126,6 +126,8 @@ class Game:
         self.explosion = pg.sprite.Group()
         self.open_pos = []
         self.open_spaces = []
+        self.health_locations = []
+        self.ammo_locations = []
         for row, tiles in enumerate(self.map_data):
             for col, tile in enumerate(tiles):
                 if tile == '1':
@@ -135,11 +137,13 @@ class Game:
                 elif tile == 'M':
                     Mob(self, col, row)
                 elif tile == 'G':
-                    Goal(self, col, row)
+                    self.goal = Goal(self, col, row)
                 elif tile == 'A':
                     Ammo(self, col, row)
+                    self.ammo_locations.append([col, row])
                 elif tile == 'H':
                     Health(self, col, row)
+                    self.health_locations.append([col, row])
                 elif tile =='\n' or tile == '\r\n':
                     continue
                 else:

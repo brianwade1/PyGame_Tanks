@@ -1,6 +1,8 @@
+import random
 import pygame as pg
 from Config.settings import *
 from Tools.helper_methods import collide_hit_rect, draw_text
+from Tools.A_Star import A_Star
 
 vec = pg.math.Vector2
 
@@ -33,9 +35,9 @@ def draw_health_box(sprite, full_health):
         col = RED
     width = int(sprite.hit_rect.width * sprite.health / full_health)
     sprite.health_bar = pg.Rect(0, 40, width, 5)
-    #pg.draw.rect(sprite.image, col, sprite.health_bar)
-    if sprite.health < full_health:
-        pg.draw.rect(sprite.image, col, sprite.health_bar)
+    pg.draw.rect(sprite.image, col, sprite.health_bar)
+    # if sprite.health < full_health:
+    #     pg.draw.rect(sprite.image, col, sprite.health_bar)
 
 def draw_bullet_number(sprite, full_bullets):
     if sprite.bullets > 0.6 * full_bullets:
@@ -59,6 +61,34 @@ def shoot_bullet(sprit):
         MuzzleFlash(sprit, pos)
         sprit.bullets -= 1
 
+def route_to_closets_ammo(sprite):
+    ammo_boxes_dists = {}
+    for ammo_box in sprite.game.ammo_boxes:
+        if ammo_box.available:
+            dist = sprite.pos.distance_to(ammo_box.pos)
+        else:
+            dist = float('inf')
+        ammo_boxes_dists[dist] = ammo_box
+    ammo_box_to_move = ammo_boxes_dists[min(ammo_boxes_dists)]
+    route = sprite.A_Star.find_route(sprite.pos, ammo_box_to_move.pos)
+    sprite.route = route
+
+def route_to_closets_health(sprite):
+    health_kit_dists = {}
+    for health_kit in sprite.game.health_kits:
+        if health_kit.available:
+            dist = sprite.pos.distance_to(health_kit.pos)
+        else:
+            dist = float('inf')
+        health_kit_dists[dist] = health_kit
+    health_kit_to_move = health_kit_dists[min(health_kit_dists)]
+    route = sprite.A_Star.find_route(sprite.pos, health_kit_to_move.pos)
+    sprite.route = route
+
+def route_to_target_sprite(sprite, target):
+    route = sprite.A_Star.find_route(sprite.pos, target.pos)
+    sprite.route = route
+
 
 class Player(pg.sprite.Sprite):
     player_points = 0
@@ -75,7 +105,7 @@ class Player(pg.sprite.Sprite):
         self.hit_rect = PLAYER_HIT_RECTANGLE.copy()
         self.hit_rect.center = self.rect.center
         self.vel = vec(0, 0)
-        self.pos = vec(x, y) * TILESIZE
+        self.pos = vec(x, y) * TILESIZE + vec(TILESIZE /2, TILESIZE / 2)
         self.rot = BLUE_PLAYER_INITIAL_ROTATION
         self.last_shot = 0
         self.health = PLAYER_HEALTH
@@ -186,7 +216,7 @@ class Mob(pg.sprite.Sprite):
         self.rect.center = (x, y)
         self.hit_rect = MOB_HIT_RECTANGLE.copy()
         self.hit_rect.center = self.rect.center
-        self.pos = vec(x, y) * TILESIZE
+        self.pos = vec(x, y) * TILESIZE + vec(TILESIZE / 2, TILESIZE / 2)
         self.vel = vec(0, 0)
         self.acc = vec(0, 0)
         self.rect.center = self.pos
@@ -194,9 +224,17 @@ class Mob(pg.sprite.Sprite):
         self.last_shot = 0
         self.health = MOB_HEALTH
         self.bullets = MOB_BULLETS
+        self.A_Star = A_Star(self.game.map_data)
+        self.route = [tuple(self.pos)]
+        self.next_waypt = tuple(self.pos)
+        self.update_time = 0
+        self.dis_to_waypt = TILESIZE
+        self.moving = False
 
     def shoot_at_sprite(self, sprite_target): 
         line_of_sight = True
+        org_rot = self.rot
+        self.rot = (self.game.player.pos - self.pos).angle_to(vec(1, 0))
         for wall in self.game.walls:
             cropped_line = wall.rect.clipline(self.pos, sprite_target.pos)
             if len(cropped_line) != 0:
@@ -206,17 +244,20 @@ class Mob(pg.sprite.Sprite):
             angle_to_sprite = (sprite_target.pos - self.pos).angle_to(vec(1, 0))
             dis_to_sprite = self.pos.distance_to(sprite_target.pos)
             if abs(angle_to_sprite - self.rot) <= SHOOT_CONE: 
+                self.rot = (self.game.player.pos - self.pos).angle_to(vec(1, 0))
                 shoot_bullet(self)
+        else:
+            self.rot = org_rot
 
     def update(self):
-        self.rot = (self.game.player.pos - self.pos).angle_to(vec(1, 0))
+        self.get_route()
+        self.get_next_waypoint()  
+        if self.moving:
+            self.rot = (self.next_waypt - self.pos).angle_to(vec(1, 0))
+            self.pos += vec(MOB_SPEED, 0).rotate(-self.rot) * self.game.dt
         self.image = pg.transform.rotate(self.image_file, self.rot)
         self.rect = self.image.get_rect()
         self.rect.center = self.pos
-        self.acc = vec(MOB_SPEED, 0).rotate(-self.rot)
-        self.acc += self.vel * -1
-        self.vel += self.acc * self.game.dt
-        self.pos += self.vel * self.game.dt + 0.5 * self.acc * self.game.dt ** 2
         self.hit_rect.centerx = self.pos.x
         collide_with_walls(self, self.game.walls, 'x')
         self.hit_rect.centery = self.pos.y
@@ -239,6 +280,40 @@ class Mob(pg.sprite.Sprite):
 
     def draw_bullet_counter(self):
         draw_bullet_number(self, MOB_BULLETS)
+
+    def get_route(self):
+        self.update_time += self.game.dt
+        if self.update_time > MOB_UPDATE_DELAY or len(self.route) <= 1:  
+            if self.health <= 2:
+                 route_to_closets_health(self)
+                 self.moving = True
+            elif self.bullets == 0:
+                route_to_closets_ammo(self)
+                self.moving = True
+            else:
+                dist_to_player = self.pos.distance_to(self.game.player.pos)
+                dist_to_goal = self.pos.distance_to(self.game.goal.pos)
+                aggressive_role = random.random()
+            
+                if dist_to_goal < dist_to_player and aggressive_role > MOB_AGGRESSIVENESS:
+                    route_to_target_sprite(self, self.game.goal)
+                else:
+                    route_to_target_sprite(self, self.game.player)
+
+                if len(self.route) > 1:
+                    self.moving = True
+                self.update_time = pg.time.get_ticks()
+
+    def get_next_waypoint(self):
+        if not hasattr(self, 'next_waypt'):
+            self.next_waypt = self.route.pop(0)
+        else:
+            self.dis_to_waypt = self.pos.distance_to(self.next_waypt)
+            if self.dis_to_waypt <= TILESIZE / 10:
+                if len(self.route) > 1:
+                    self.next_waypt = self.route.pop(0)
+                else:
+                    self.moving = False
 
 
 class Wall(pg.sprite.Sprite):
