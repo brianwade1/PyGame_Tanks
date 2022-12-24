@@ -39,16 +39,27 @@ def draw_health_box(sprite, full_health):
     # if sprite.health < full_health:
     #     pg.draw.rect(sprite.image, col, sprite.health_bar)
 
-def draw_bullet_number(sprite, full_bullets):
-    if sprite.bullets > 0.6 * full_bullets:
-        col = GREEN
-    elif sprite.bullets > 0.3 * full_bullets:
-        col = YELLOW
-    else:
-        col = RED
-    bullet_count = str(sprite.bullets)
-    pos = vec(sprite.image.get_width() / 2, sprite.image.get_height() / 2) - vec(sprite.image.get_width() * 0.3, 0).rotate(-sprite.rot)
-    draw_text(sprite.image, bullet_count, col, 14, pos[0], pos[1], 270+sprite.rot)
+# def draw_bullet_number(sprite, full_bullets):
+#     if sprite.bullets > 0.6 * full_bullets:
+#         col = GREEN
+#     elif sprite.bullets > 0.3 * full_bullets:
+#         col = YELLOW
+#     else:
+#         col = RED
+#     bullet_count = str(sprite.bullets)
+#     pos = vec(sprite.image.get_width() / 2, sprite.image.get_height() / 2) - vec(sprite.image.get_width() * 0.3, 0).rotate(-sprite.rot)
+#     draw_text(sprite.image, bullet_count, col, 14, pos[0], pos[1], 90 + sprite.rot)
+
+# def draw_mine_number(sprite, full_mines):
+#     if sprite.mines > 0.6 * full_mines:
+#         col = GREEN
+#     elif sprite.mines > 0.3 * full_mines:
+#         col = YELLOW
+#     else:
+#         col = RED
+#     mine_count = str(sprite.mines)
+#     pos = vec(sprite.image.get_width() / 2, sprite.image.get_height() / 2) - vec(sprite.image.get_width() * 0.3, 0).rotate(-sprite.rot)
+#     draw_text(sprite.image, mine_count, col, 14, pos[0], pos[1], 270 + sprite.rot)
 
 def shoot_bullet(sprit):
     now = pg.time.get_ticks()
@@ -60,6 +71,12 @@ def shoot_bullet(sprit):
         sprit.vel = vec(-KICKBACK, 0).rotate(-sprit.rot)
         MuzzleFlash(sprit, pos)
         sprit.bullets -= 1
+
+def lay_mine(sprit):
+    now = pg.time.get_ticks()
+    if (now - sprit.last_shot > MINE_RATE_DELAY) and (sprit.mines > 0):
+        sprit.last_shot = now
+        Mine(sprit)
 
 def route_to_closets_ammo(sprite):
     ammo_boxes_dists = {}
@@ -108,8 +125,10 @@ class Player(pg.sprite.Sprite):
         self.pos = vec(x, y) * TILESIZE + vec(TILESIZE /2, TILESIZE / 2)
         self.rot = BLUE_PLAYER_INITIAL_ROTATION
         self.last_shot = 0
+        self.last_mine = 0
         self.health = PLAYER_HEALTH
         self.bullets = PLAYER_BULLETS
+        self.mines = PLAYER_MINES
 
     def get_keys(self):
         self.vel = vec(0, 0)
@@ -125,6 +144,8 @@ class Player(pg.sprite.Sprite):
             self.vel = vec(-PLAYER_SPEED / 2, 0).rotate(-self.rot)
         if keys[pg.K_SPACE]:
             shoot_bullet(self)
+        if keys[pg.K_RETURN]:
+            lay_mine(self)
 
     def move(self):
         if not self.collide_with_walls():
@@ -144,14 +165,17 @@ class Player(pg.sprite.Sprite):
         collide_with_walls(self, self.game.walls, 'y')
         self.rect.center = self.hit_rect.center
         if self.health <= 0:
-            Explosion(self.game, self.pos)
+            Explosion(self)
             self.kill()
 
     def draw_health(self):
         draw_health_box(self, PLAYER_HEALTH)
 
-    def draw_bullet_counter(self):
-        draw_bullet_number(self, PLAYER_BULLETS)
+    # def draw_bullet_counter(self):
+    #     draw_bullet_number(self, PLAYER_BULLETS)
+
+    # def draw_mine_counter(self):
+    #     draw_mine_number(self, PLAYER_MINES)
 
 
 class Bullet(pg.sprite.Sprite):
@@ -180,15 +204,18 @@ class Bullet(pg.sprite.Sprite):
 
 
 class Explosion(pg.sprite.Sprite):
-    def __init__(self, game, pos):
+    def __init__(self, sprite):
         self._layer = EFFECT_LAYER
-        self.groups = game.all_sprites, game.explosion
+        self.groups = sprite.game.all_sprites, sprite.game.explosion
         pg.sprite.Sprite.__init__(self, self.groups)
-        self.game = game
-        self.image = game.other_images['explosion']
+        self.game = sprite.game
+        if sprite in sprite.game.players or sprite.game.mobs:
+            self.image = sprite.game.other_images['explosion']
+        if sprite in sprite.game.player_mines or sprite.game.player_mines:
+            self.image = sprite.game.other_images['mine_explosion']
         self.rect = self.image.get_rect()
-        self.pos = vec(pos)
-        self.rect.center = pos
+        self.pos = vec(sprite.pos)
+        self.rect.center = self.pos
         self.spawn_time = now = pg.time.get_ticks()
 
     def update(self):
@@ -222,8 +249,10 @@ class Mob(pg.sprite.Sprite):
         self.rect.center = self.pos
         self.rot = RED_PLAYER_INITIAL_ROTATION
         self.last_shot = 0
+        self.last_mine = 0
         self.health = MOB_HEALTH
         self.bullets = MOB_BULLETS
+        self.mines = MOB_MINES
         self.A_Star = A_Star(self.game.map_data)
         self.route = [tuple(self.pos)]
         self.next_waypt = tuple(self.pos)
@@ -249,6 +278,11 @@ class Mob(pg.sprite.Sprite):
         else:
             self.rot = org_rot
 
+    def lay_mine(self): 
+        do_mine_rand_draw = random.random()
+        if do_mine_rand_draw < MOB_MINE_PROB:
+            lay_mine(self)
+
     def update(self):
         self.get_route()
         self.get_next_waypoint()  
@@ -270,16 +304,20 @@ class Mob(pg.sprite.Sprite):
 
         self.rect.center = self.hit_rect.center
         if self.health <= 0:
-            Explosion(self.game, self.pos)
+            Explosion(self)
             self.kill()
 
         self.shoot_at_sprite(self.game.player)
+        self.lay_mine()
 
     def draw_health(self):
         draw_health_box(self, MOB_HEALTH)
 
-    def draw_bullet_counter(self):
-        draw_bullet_number(self, MOB_BULLETS)
+    # def draw_bullet_counter(self):
+    #     draw_bullet_number(self, MOB_BULLETS)
+
+    # def draw_mine_counter(self):
+    #     draw_mine_number(self, MOB_MINES)
 
     def get_route(self):
         self.update_time += self.game.dt
@@ -408,3 +446,28 @@ class MuzzleFlash(pg.sprite.Sprite):
             self.kill()
         else:
             self.pos += self.vel * self.game.dt
+
+
+class Mine(pg.sprite.Sprite):
+    def __init__(self, sprite):
+        self._layer = BULLET_LAYER
+        if isinstance(sprite, Mob):
+            self.groups = sprite.game.all_sprites, sprite.game.mob_mines
+            self.color = RED
+        else:
+            self.groups = sprite.game.all_sprites, sprite.game.player_mines
+            self.color = BLUE
+        pg.sprite.Sprite.__init__(self, self.groups)
+        self.game = sprite.game
+        image = pg.Surface((5, 5))
+        image.fill(self.color).copy()
+        self.image = pg.transform.rotate(image, 45)
+        self.pos = sprite.pos.copy()
+        self.rect = self.image.get_rect()
+        self.rect.center = sprite.pos
+        self.spawn_time = pg.time.get_ticks()
+
+    def update(self):
+        if pg.time.get_ticks() - self.spawn_time > MINE_LIFETIME:
+            self.kill()
+

@@ -2,7 +2,6 @@
 import sys
 import os
 import random
-import time
 
 # Conda imports
 import pygame as pg
@@ -25,6 +24,17 @@ def hit_by_bullet(hit_sprites):
             elif hit_sprite in g.mobs:
                 g.score['Blue'] += HIT_POINTS
 
+def hit_by_mine(hit_sprites):
+        for hit_sprite in hit_sprites:
+            hit_sprite.health -= MINE_DAMAGE
+            hit_sprite.vel = vec(0,0)
+            Explosion(hit_sprites[hit_sprite][0])
+
+            if hit_sprite in g.players:
+                g.score['Red'] += HIT_POINTS
+            elif hit_sprite in g.mobs:
+                g.score['Blue'] += HIT_POINTS
+
 def hit_goal(sprites_on_goal):
     for sprite_on_goal in sprites_on_goal:
         if sprite_on_goal in g.players:
@@ -40,20 +50,17 @@ def hit_goal(sprites_on_goal):
         Goal(g, new_location[0], new_location[1])
 
 def hit_ammo(sprites_on_ammo):
-    #do_ammo_move = False
     for sprite_on_ammo in sprites_on_ammo:
         ammo_needs_respawn = False
         sprite_ammo = sprites_on_ammo[sprite_on_ammo][0]
         if sprite_ammo.available:
             if sprite_on_ammo in g.players and sprite_on_ammo.bullets < PLAYER_BULLETS:
                 sprite_on_ammo.bullets += AMMO_BULLETS
-                #do_ammo_move = True
                 ammo_needs_respawn = True
                 if sprite_on_ammo.bullets > PLAYER_BULLETS:
                     sprite_on_ammo.bullets = PLAYER_BULLETS
             if sprite_on_ammo in g.mobs and sprite_on_ammo.bullets < MOB_BULLETS:
                 sprite_on_ammo.bullets += AMMO_BULLETS
-                #do_ammo_move = True
                 ammo_needs_respawn = True
                 if sprite_on_ammo.bullets > MOB_BULLETS:
                     sprite_on_ammo.bullets = MOB_BULLETS
@@ -81,7 +88,7 @@ def hit_health(sprites_on_health):
                 sprite_health.hit_time = pg.time.get_ticks()
                 sprite_health.available = False
                 sprite_health.image.set_alpha(0)
-  
+
 
 class Game:
     def __init__(self):
@@ -125,6 +132,8 @@ class Game:
         self.player_bullets = pg.sprite.Group()
         self.mob_bullets = pg.sprite.Group()
         self.explosion = pg.sprite.Group()
+        self.player_mines = pg.sprite.Group()
+        self.mob_mines = pg.sprite.Group()
         self.open_pos = []
         self.open_spaces = []
         self.health_locations = []
@@ -201,9 +210,16 @@ class Game:
         hits = pg.sprite.groupcollide(self.players, self.mob_bullets, False, True)
         if hits:
             hit_by_bullet(hits)
-        if self.player.health <= 0:
-            Explosion(self, self.player.pos)
-            self.playing = False
+
+        # mob hit mine
+        hits = pg.sprite.groupcollide(self.mobs, self.player_mines, False, True)
+        if hits:
+            hit_by_mine(hits)
+
+        # player hit mine
+        hits = pg.sprite.groupcollide(self.players, self.mob_mines, False, True)
+        if hits:
+            hit_by_mine(hits)
 
         # Player or Mob hits goal
         sprites_on_goal = pg.sprite.groupcollide(self.movers, self.goals, False, True)
@@ -219,6 +235,11 @@ class Game:
         sprites_on_health = pg.sprite.groupcollide(self.movers, self.health_kits, False, False)
         if sprites_on_health:
             hit_health(sprites_on_health)
+
+        # Player dead   
+        if self.player.health <= 0:
+            Explosion(self.player)
+            self.playing = False
 
         # if all enemy killed, end game
         if not self.mobs:
@@ -237,16 +258,25 @@ class Game:
         for sprite in self.all_sprites:
             if isinstance(sprite, Mob) or isinstance(sprite, Player):
                 sprite.draw_health()
-                sprite.draw_bullet_counter()
+                #sprite.draw_bullet_counter()
+                #sprite.draw_mine_counter()
         self.all_sprites.draw(self.screen)
 
         # draw score string at top
         score_string = f"Blue: {self.score['Blue']}  Red: {self.score['Red']}"
-        draw_text(self.screen, score_string, WHITE, FONT_SIZE, self.width / 3, 1, 0)
+        draw_text(self.screen, score_string, BLACK, FONT_SIZE, self.width / 3, 1, 0)
 
         # draw timer at top
         time_string = f"Minutes: {self.minutes} Seconds: {self.seconds}"
-        draw_text(self.screen, time_string, WHITE, FONT_SIZE, 2 * self.width / 3, 1, 0)
+        draw_text(self.screen, time_string, BLACK, FONT_SIZE, 2 * self.width / 3, 1, 0)
+
+        # Blue ammo display
+        blue_ammo_string = f"BLUE - Bullets: {self.player.bullets} Mines: {self.player.mines}"
+        draw_text(self.screen, blue_ammo_string, BLACK, FONT_SIZE, 0.2 * self.width, 0.96 * self.height, 0)
+
+        # Red ammo display
+        red_ammo_string = f"RED - Bullets: {self.mobs.sprites()[0].bullets} Mines: {self.mobs.sprites()[0].mines}"
+        draw_text(self.screen, red_ammo_string, BLACK, FONT_SIZE, 0.8 * self.width, 0.96 * self.height, 0)
 
         pg.display.flip()
 

@@ -9,6 +9,7 @@ LIGHTGREY = (100, 100, 100)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
+BLUE = (0, 0, 255)
 
 # Images in folder
 Tank_images = {
@@ -29,6 +30,7 @@ Bullet_images = {
 
 Other_images = {
     'explosion' : 'explosion2.png',
+    'mine_explosion' : 'explosion4.png',
     'muzzle_flash' : 'shotThin.png',
     'goal' : 'explosion1.png',
     'ammo' : 'crateWood.png',
@@ -49,6 +51,7 @@ PLAYER_SPEED = 200.0
 PLAYER_ROTATION_SPEED = 200.0
 PLAYER_HEALTH = 10
 PLAYER_BULLETS = 10
+PLAYER_MINES = 5
 
 # Gun settings
 BULLET_SPEED = 500
@@ -60,6 +63,11 @@ BARREL_OFFSET = vec(30, 0)
 EXPLOSION_TIME = 1000
 MUZZLE_FLASH_SIZE = (20, 10)
 FLASH_DURATION = 40
+
+# Mine settings
+MINE_LIFETIME = 5 * 1000 # 10 sec * 1000 milliseconds
+MINE_RATE_DELAY = 500
+MINE_DAMAGE = 1
 
 # Image settings
 RED_PLAYER_INITIAL_ROTATION = 90
@@ -75,8 +83,10 @@ MOB_DAMAGE = 1
 MOB_KNOCKBACK = 20
 SHOOT_CONE = 5
 MOB_BULLETS = 10
+MOB_MINES = 5
 MOB_UPDATE_DELAY = 500
 MOB_AGGRESSIVENESS = 0.5
+MOB_MINE_PROB = 0.05
 
 # Goal settings
 GOAL_SPAWN_MIN_DIST = 100
