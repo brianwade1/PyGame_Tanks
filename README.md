@@ -8,7 +8,11 @@ This repo is a top-down tank shooter game designed with PyGame. Players can play
 
 ## Environment and Packages
 
-This repo was built with python version 3.10.8. The only package outside the standard packages required for this repo are pygame version 2.1.2 and numpy version >= 1.24. The [requirements.txt](requirements.txt) allows the user to create an environment with this package by running the command: python3 -m pip install -r requirements.txt
+This repo was built with python version 3.10.8. The only package outside the standard packages required for this repo are 
+* pygame version 2.1.2 
+* numpy version 1.24. (needed for the A* algorithm)
+
+The [requirements.txt](requirements.txt) allows the user to create an environment with this package by running the command: python3 -m pip install -r requirements.txt
 
 ---
 

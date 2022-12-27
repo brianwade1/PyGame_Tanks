@@ -40,7 +40,7 @@ Other_images = {
 # game settings
 FPS = 60
 TITLE = "Tank Game"
-MAP_FILE = 'map.txt'
+MAP_FILE = 'map_complex.txt'
 BACKGROUND_COLOR = DARKGREY
 GRID_COLOR = LIGHTGREY
 TILESIZE = 24
