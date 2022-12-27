@@ -378,7 +378,8 @@ class Goal(pg.sprite.Sprite):
         self.game = game
         self.pos = (vec(x, y) * TILESIZE) + vec(TILESIZE / 2, TILESIZE / 2)
         self.image_file = game.other_images['goal']
-        self.image = pg.transform.scale_by(self.image_file.copy(), 0.5)
+        #self.image = pg.transform.scale_by(self.image_file.copy(), 0.5)
+        self.image = pg.transform.scale(self.image_file.copy(), (0.75 * TILESIZE, 0.75 * TILESIZE))
         self.rect = self.image.get_rect()
         self.rect.center = self.pos
 
@@ -391,7 +392,8 @@ class Ammo(pg.sprite.Sprite):
         self.game = game
         self.pos = (vec(x, y) * TILESIZE) + vec(TILESIZE / 2, TILESIZE / 2)
         self.image_file = game.other_images['ammo']
-        self.image = pg.transform.scale_by(self.image_file.copy(), 0.5)
+        #self.image = pg.transform.scale_by(self.image_file.copy(), 0.5)
+        self.image = pg.transform.scale(self.image_file.copy(), (TILESIZE / 2, TILESIZE / 2))
         self.rect = self.image.get_rect()
         self.rect.center = self.pos
         self.available = True
@@ -413,7 +415,7 @@ class Health(pg.sprite.Sprite):
         self.pos = (vec(x, y) * TILESIZE) + vec(TILESIZE / 2, TILESIZE / 2)
         self.image_file = game.other_images['health']
         #self.image = pg.transform.scale_by(self.image_file.copy(), 0.5)
-        self.image = self.image_file.copy()
+        self.image = pg.transform.scale(self.image_file.copy(), (TILESIZE / 2, TILESIZE / 2))
         self.rect = self.image.get_rect()
         self.rect.center = self.pos
         self.available = True

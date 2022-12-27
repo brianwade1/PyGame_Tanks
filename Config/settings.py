@@ -65,7 +65,7 @@ MUZZLE_FLASH_SIZE = (20, 10)
 FLASH_DURATION = 40
 
 # Mine settings
-MINE_LIFETIME = 5 * 1000 # 10 sec * 1000 milliseconds
+MINE_LIFETIME = 5 * 1000 # 5 sec * 1000 milliseconds
 MINE_RATE_DELAY = 500
 MINE_DAMAGE = 1
 
