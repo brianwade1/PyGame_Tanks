@@ -77,6 +77,7 @@ def lay_mine(sprit):
     if (now - sprit.last_shot > MINE_RATE_DELAY) and (sprit.mines > 0):
         sprit.last_shot = now
         Mine(sprit)
+        sprit.mines -= 1
 
 def route_to_closets_ammo(sprite):
     ammo_boxes_dists = {}
