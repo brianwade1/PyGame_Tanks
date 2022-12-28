@@ -175,27 +175,32 @@ class Game:
         # game loop - set self.playing = False to end the game
         self.playing = True
         while self.playing:
-            self.dt_ms = self.clock.tick(FPS)
-            self.dt = self.dt_ms / 1000
+            self.advance_time()
             self.events()
             self.update()
             self.timer()
             self.draw()
+        self.game_over()
 
+    def game_over(self):
         game_over_waiting = True
         wait_time = 1000
         self.draw()
-        while game_over_waiting:
-            self.dt_ms = self.clock.tick(FPS)
-            self.game_over()
+        while game_over_waiting: 
+            self.advance_time()
+            self.game_over_text()
             self.events()
             wait_time -= self.dt_ms
             if wait_time <= 0:
                 game_over_waiting = False
 
-    def quit(self):
-        pg.quit()
-        sys.exit()
+    def game_over_text(self):
+        draw_text(self.screen, "GAME OVER", RED, 2 * FONT_SIZE, self.width / 2, self.height / 2, 0)
+        pg.display.flip()
+
+    def advance_time(self):
+        self.dt_ms = self.clock.tick(FPS)
+        self.dt = self.dt_ms / 1000
 
     def update(self):
         # update portion of the game loop
@@ -302,9 +307,10 @@ class Game:
                 if event.key == pg.K_ESCAPE:
                     self.quit()
 
-    def game_over(self):
-        draw_text(self.screen, "GAME OVER", RED, 2 * FONT_SIZE, self.width / 2, self.height / 2, 0)
-        pg.display.flip()
+    def quit(self):
+        pg.quit()
+        sys.exit()
+
 
 if __name__ == '__main__':
     # create the game object
