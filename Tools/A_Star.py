@@ -75,6 +75,10 @@ def convert_to_map_route(start_location, array_route, map):
     return map_route
 
 class A_Star():
+    """
+    Code from Andrew Jones, Applying the A* Path Finding Algorithm in Python (Part 1: 2D square grid), 14 Sept 2018, accessed 20 Dec 2022. 
+    https://www.analytics-link.com/post/2018/09/14/applying-the-a-path-finding-algorithm-in-python-part-1-2d-square-grid
+    """
     def __init__(self, map_raw):
         self.map = self._refine_map(map_raw)
         self.col_edge = (0, len(self.map[0]) - 1)
