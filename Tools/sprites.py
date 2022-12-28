@@ -1,5 +1,10 @@
+# Standard Library Imports
 import random
+
+# Conda imports
 import pygame as pg
+
+# Functions in other scripts of this repo
 from Config.settings import *
 from Tools.helper_methods import collide_hit_rect, draw_text
 from Tools.A_Star import A_Star
