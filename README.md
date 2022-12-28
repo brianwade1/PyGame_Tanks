@@ -8,8 +8,9 @@ This repo is a top-down tank shooter game designed with PyGame. Players can play
 
 ## Environment and Packages
 
-This repo was built with python version 3.10.8. The only package outside the standard packages required for this repo are 
-* pygame version 2.1.2 
+This repo was built with python version 3.10.8. The only package outside the standard packages required for this repo are:
+
+* pygame version 2.1.2
 * numpy version 1.24. (needed for the A* algorithm)
 
 The [requirements.txt](requirements.txt) allows the user to create an environment with this package by running the command: python3 -m pip install -r requirements.txt
@@ -18,7 +19,7 @@ The [requirements.txt](requirements.txt) allows the user to create an environmen
 
 ## Game Play
 
-The goal of the game is to get more points than your opponent without running out of life within the time limit. Each game currently runs for 2 minutes with a count down timer shown in the upper right of the screen. The current score for red and blue is shown in the upper left. 
+The goal of the game is to get more points than your opponent without running out of life within the time limit. Each game currently runs for 2 minutes with a count down timer shown in the upper right of the screen. The current score for red and blue is shown in the upper left.
 
 ### Control
 
@@ -42,6 +43,7 @@ Players or the cpu player gains 1 point for each bullet or mine hit. Players als
 During game play, players or the cpu player can regain 3 points of life by touching the "medical kits": ![Med_Kit](/Images/GameImages/HealthPack.png =15x15). Players can also replenish 5 bullets by touching the ![Ammo_Pack](/Images/GameImages/cratewood.png =15x15). Once the health or ammo pack are touched they will disappear and be unavailable for 3 seconds for health or 5 seconds for ammo. These settings can be changed in the [settings.py](Config/settings.py) file
 
 ---
+
 ## Folders and Files
 
 This repo contains the following folders and files:
@@ -49,14 +51,14 @@ This repo contains the following folders and files:
 * [main](main.py) : Run this file to play the game. This controls the pygame game flow.
 
 * [Tools](Tools): This folder contains several classes and methods used in the main script.
-  * [sprites.py](Tools/sprites.py) has classes for all the sprites used in the game such as the player tank, cpu-controlled red tank, goal, health kit, etc. 
+  * [sprites.py](Tools/sprites.py) has classes for all the sprites used in the game such as the player tank, cpu-controlled red tank, goal, health kit, etc.
   * [data_loader.py](Tools/data_loader.py) has methods to load the map, images, and settings.
   * [helper_methods.py](Tools/helper_methods.py) has methods used in multiple scripts.
   * [A_Star.py](Tools/A_Star.py) implements the A* algorithm to find the shortest path between two points. This is used by the cpu-controlled red tank to find the shortest path to the player tank, health kits, or ammo kits.
 
 * [Images](Images) : Images used in this Readme file
-   * [GameImages](Images/GameImages/): Has the png files used for all images in the game. This is a subset of the full kenney image pack below.
-   * [Kenney_topdowntankredux](Images/kenney_topdowntanksredux/) Has the full set of original images from the [kenney_website](https://www.kenney.nl/assets).
+  * [GameImages](Images/GameImages/): Has the png files used for all images in the game. This is a subset of the full kenney image pack below.
+  * [Kenney_topdowntankredux](Images/kenney_topdowntanksredux/) Has the full set of original images from the [kenney_website](https://www.kenney.nl/assets).
 
 * [Config](Config) - Folder for the map files and settings.
   * [map.txt](Config/map.txtmap.txt) map file which is loaded before play. Each "1" is a wall. Each "." is an open square of size (24x24) (size set in the [settings.py](settings.py) file.). The player starts at the "P" location and the red tank(s) start at the "M" locations. Health packs are located at "H" and ammo at "A".
@@ -66,8 +68,12 @@ This repo contains the following folders and files:
 * [requirements.py](requirements.py) - list of python packages required to run the scripts in this repo.
 
 ---
+
 ## References
 
-Initial code based on examples from: https://github.com/kidscancode/pygame_tutorials/tree/master/tilemap
+Initial code based on examples from: [kids_can_code](https://github.com/kidscancode/pygame_tutorials/tree/master/tilemap)
 
-Game images from : https://kenney.nl/assets/topdown-tanks-redux
+A star code from: Andrew Jones. "Applying the A* Path Finding Algorithm in Python (Part 1: 2D square grid)", 14 Sept 2018, accessed 20 Dec 2022.
+[link](https://www.analytics-link.com/post/2018/09/14/applying-the-a-path-finding-algorithm-in-python-part-1-2d-square-grid)
+
+Game images from : [kenney_topdown-tanks-redux](https://kenney.nl/assets/topdown-tanks-redux)
