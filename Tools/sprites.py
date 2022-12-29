@@ -135,6 +135,7 @@ class Player(pg.sprite.Sprite):
         self.health = PLAYER_HEALTH
         self.bullets = PLAYER_BULLETS
         self.mines = PLAYER_MINES
+        self.human_player = True
 
     def get_keys(self):
         self.vel = vec(0, 0)
@@ -159,7 +160,8 @@ class Player(pg.sprite.Sprite):
             self.y += self.dy
 
     def update(self):
-        self.get_keys()
+        if self.human_player:
+            self.get_keys()
         self.rot = (self.rot + self.rot_speed * self.game.dt) % 360
         self.image = pg.transform.rotate(self.image_file, self.rot)
         self.rect = self.image.get_rect()
