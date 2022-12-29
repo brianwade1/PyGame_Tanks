@@ -13,83 +13,6 @@ from Config.settings import *
 from Tools.sprites import Explosion
 from Tools.helper_methods import collide_hit_rect, draw_text
 
-# Functions used by multiple classes
-def hit_by_bullet(hit_sprites):
-        for hit_sprite in hit_sprites:
-            hit_sprite.health -= BULLET_DAMAGE
-            hit_sprite.vel = vec(0,0)
-
-            if hit_sprite in g.players:
-                g.score['Red'] += HIT_POINTS
-            elif hit_sprite in g.mobs:
-                g.score['Blue'] += HIT_POINTS
-
-def hit_by_mine(hit_sprites):
-        for hit_sprite in hit_sprites:
-            hit_sprite.health -= MINE_DAMAGE
-            hit_sprite.vel = vec(0,0)
-            Explosion(hit_sprites[hit_sprite][0])
-
-            if hit_sprite in g.players:
-                g.score['Red'] += HIT_POINTS
-            elif hit_sprite in g.mobs:
-                g.score['Blue'] += HIT_POINTS
-
-def hit_goal(sprites_on_goal):
-    for sprite_on_goal in sprites_on_goal:
-        if sprite_on_goal in g.players:
-            g.score['Blue'] += GOAL_POINTS
-        elif sprite_on_goal in g.mobs:
-            g.score['Red'] += GOAL_POINTS
-    for goal in sprites_on_goal[sprite_on_goal]:
-        # Get possible spawn locations far enough away
-        possible_locs = [pos for pos in g.open_spaces if goal.pos.distance_to(vec(pos) * TILESIZE) >= GOAL_SPAWN_MIN_DIST]
-        new_location = random.choice(possible_locs)
-        # Kill current goal and re-spawn a new goal
-        goal.kill()
-        Goal(g, new_location[0], new_location[1])
-
-def hit_ammo(sprites_on_ammo):
-    for sprite_on_ammo in sprites_on_ammo:
-        ammo_needs_respawn = False
-        sprite_ammo = sprites_on_ammo[sprite_on_ammo][0]
-        if sprite_ammo.available:
-            if sprite_on_ammo in g.players and sprite_on_ammo.bullets < PLAYER_BULLETS:
-                sprite_on_ammo.bullets += AMMO_BULLETS
-                ammo_needs_respawn = True
-                if sprite_on_ammo.bullets > PLAYER_BULLETS:
-                    sprite_on_ammo.bullets = PLAYER_BULLETS
-            if sprite_on_ammo in g.mobs and sprite_on_ammo.bullets < MOB_BULLETS:
-                sprite_on_ammo.bullets += AMMO_BULLETS
-                ammo_needs_respawn = True
-                if sprite_on_ammo.bullets > MOB_BULLETS:
-                    sprite_on_ammo.bullets = MOB_BULLETS
-            if ammo_needs_respawn:
-                sprite_ammo.hit_time = pg.time.get_ticks()
-                sprite_ammo.available = False
-                sprite_ammo.image.set_alpha(0)
-
-def hit_health(sprites_on_health):
-    for sprite_on_health in sprites_on_health:
-        health_needs_respawn = False
-        sprite_health = sprites_on_health[sprite_on_health][0]
-        if sprite_health.available:
-            if sprite_on_health in g.players and sprite_on_health.health < PLAYER_HEALTH:
-                sprite_on_health.health += HEALTH_ADD
-                health_needs_respawn = True
-                if sprite_on_health.health > PLAYER_HEALTH:
-                    sprite_on_health.health = PLAYER_HEALTH
-            if sprite_on_health in g.mobs and sprite_on_health.health < MOB_HEALTH:
-                sprite_on_health.health += HEALTH_ADD
-                health_needs_respawn = True
-                if sprite_on_health.health > MOB_HEALTH:
-                    sprite_on_health.health = MOB_HEALTH
-            if health_needs_respawn:
-                sprite_health.hit_time = pg.time.get_ticks()
-                sprite_health.available = False
-                sprite_health.image.set_alpha(0)
-
-
 class Game:
     def __init__(self):
         # Initialize the pygame module which loads objects specific to operating system and hardware
@@ -202,6 +125,81 @@ class Game:
         self.dt_ms = self.clock.tick(FPS)
         self.dt = self.dt_ms / 1000
 
+    def hit_by_bullet(self, hit_sprites):
+        for hit_sprite in hit_sprites:
+            hit_sprite.health -= BULLET_DAMAGE
+            hit_sprite.vel = vec(0,0)
+
+            if hit_sprite in self.players:
+                self.score['Red'] += HIT_POINTS
+            elif hit_sprite in self.mobs:
+                self.score['Blue'] += HIT_POINTS
+
+    def hit_by_mine(self, hit_sprites):
+            for hit_sprite in hit_sprites:
+                hit_sprite.health -= MINE_DAMAGE
+                hit_sprite.vel = vec(0,0)
+                Explosion(hit_sprites[hit_sprite][0])
+
+                if hit_sprite in self.players:
+                    self.score['Red'] += HIT_POINTS
+                elif hit_sprite in self.mobs:
+                    self.score['Blue'] += HIT_POINTS
+
+    def hit_goal(self, sprites_on_goal):
+        for sprite_on_goal in sprites_on_goal:
+            if sprite_on_goal in self.players:
+                self.score['Blue'] += GOAL_POINTS
+            elif sprite_on_goal in self.mobs:
+                self.score['Red'] += GOAL_POINTS
+        for goal in sprites_on_goal[sprite_on_goal]:
+            # Get possible spawn locations far enough away
+            possible_locs = [pos for pos in self.open_spaces if goal.pos.distance_to(vec(pos) * TILESIZE) >= GOAL_SPAWN_MIN_DIST]
+            new_location = random.choice(possible_locs)
+            # Kill current goal and re-spawn a new goal
+            goal.kill()
+            Goal(self, new_location[0], new_location[1])
+
+    def hit_ammo(self, sprites_on_ammo):
+        for sprite_on_ammo in sprites_on_ammo:
+            ammo_needs_respawn = False
+            sprite_ammo = sprites_on_ammo[sprite_on_ammo][0]
+            if sprite_ammo.available:
+                if sprite_on_ammo in self.players and sprite_on_ammo.bullets < PLAYER_BULLETS:
+                    sprite_on_ammo.bullets += AMMO_BULLETS
+                    ammo_needs_respawn = True
+                    if sprite_on_ammo.bullets > PLAYER_BULLETS:
+                        sprite_on_ammo.bullets = PLAYER_BULLETS
+                if sprite_on_ammo in self.mobs and sprite_on_ammo.bullets < MOB_BULLETS:
+                    sprite_on_ammo.bullets += AMMO_BULLETS
+                    ammo_needs_respawn = True
+                    if sprite_on_ammo.bullets > MOB_BULLETS:
+                        sprite_on_ammo.bullets = MOB_BULLETS
+                if ammo_needs_respawn:
+                    sprite_ammo.hit_time = pg.time.get_ticks()
+                    sprite_ammo.available = False
+                    sprite_ammo.image.set_alpha(0)
+
+    def hit_health(self, sprites_on_health):
+        for sprite_on_health in sprites_on_health:
+            health_needs_respawn = False
+            sprite_health = sprites_on_health[sprite_on_health][0]
+            if sprite_health.available:
+                if sprite_on_health in self.players and sprite_on_health.health < PLAYER_HEALTH:
+                    sprite_on_health.health += HEALTH_ADD
+                    health_needs_respawn = True
+                    if sprite_on_health.health > PLAYER_HEALTH:
+                        sprite_on_health.health = PLAYER_HEALTH
+                if sprite_on_health in self.mobs and sprite_on_health.health < MOB_HEALTH:
+                    sprite_on_health.health += HEALTH_ADD
+                    health_needs_respawn = True
+                    if sprite_on_health.health > MOB_HEALTH:
+                        sprite_on_health.health = MOB_HEALTH
+                if health_needs_respawn:
+                    sprite_health.hit_time = pg.time.get_ticks()
+                    sprite_health.available = False
+                    sprite_health.image.set_alpha(0)
+
     def update(self):
         # update portion of the game loop
         self.all_sprites.update()
@@ -209,37 +207,37 @@ class Game:
         # bullets hit mob
         hits = pg.sprite.groupcollide(self.mobs, self.player_bullets, False, True)
         if hits:
-            hit_by_bullet(hits)
+            self.hit_by_bullet(hits)
             
         # bullets hit player
         hits = pg.sprite.groupcollide(self.players, self.mob_bullets, False, True)
         if hits:
-            hit_by_bullet(hits)
+            self.hit_by_bullet(hits)
 
         # mob hit mine
         hits = pg.sprite.groupcollide(self.mobs, self.player_mines, False, True)
         if hits:
-            hit_by_mine(hits)
+            self.hit_by_mine(hits)
 
         # player hit mine
         hits = pg.sprite.groupcollide(self.players, self.mob_mines, False, True)
         if hits:
-            hit_by_mine(hits)
+            self.hit_by_mine(hits)
 
         # Player or Mob hits goal
         sprites_on_goal = pg.sprite.groupcollide(self.movers, self.goals, False, True)
         if sprites_on_goal:
-            hit_goal(sprites_on_goal)
+            self.hit_goal(sprites_on_goal)
 
         # Player or Mob hits ammo
         sprites_on_ammo = pg.sprite.groupcollide(self.movers, self.ammo_boxes, False, False)
         if sprites_on_ammo:
-            hit_ammo(sprites_on_ammo)
+            self.hit_ammo(sprites_on_ammo)
 
         # Player or Mob hits health
         sprites_on_health = pg.sprite.groupcollide(self.movers, self.health_kits, False, False)
         if sprites_on_health:
-            hit_health(sprites_on_health)
+            self.hit_health(sprites_on_health)
 
         # Player dead   
         if self.player.health <= 0:
