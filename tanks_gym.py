@@ -7,16 +7,11 @@ import numpy as np
 # PiP packages
 import gym
 import pygame as pg
-from pygame.constants import KEYDOWN, KEYUP, K_LEFT, K_RIGHT, K_UP, K_DOWN, K_SPACE, K_RETURN, K_F15
 
 # Functions in other scripts of this repo
 from Config.settings import *
 from main import Game
-from sprites import shoot_bullet, lay_mine
-
-"""
-https://github.com/ntasfi/PyGame-Learning-Environment/blob/master/ple/games/base/pygamewrapper.py
-"""
+from Tools.sprites import shoot_bullet, lay_mine
 
 
 class Tanks_Env(gym.Env):
@@ -28,7 +23,6 @@ class Tanks_Env(gym.Env):
         # admin settings
         self.game = game
         self.steps = 0 #step counter
-        self.max_steps = 1000
 
         # See display
         self.see_display = True
@@ -38,21 +32,17 @@ class Tanks_Env(gym.Env):
         self.set_seeds()
 
         # Gym settings - action space
-        # Actions: rotate left, rotate right, move forward, move backward, shoot, place mine.
+        # Actions at each step: rotate left, rotate right, move forward, move backward, shoot, place mine, do nothing.
         self.action_dict = {
-            'left' : K_LEFT,
-            'right' : K_RIGHT,
-            'forward' : K_UP,
-            'backward' : K_DOWN,
-            'shoot' : K_SPACE,
-            'mine' : K_RETURN,
-            'no_action' : K_F15
+            0 : 'left',
+            1 : 'right',
+            2 : 'forward',
+            3 : 'backward',
+            4 : 'shoot',
+            5 : 'mine',
+            6 : 'no_action'
         }
-        self.action_list = list(self.action_dict.keys())
-        self.action_space = gym.spaces.Discrete(len(self.action_list))
-
-        self.action = 'no_action' # initialize agent action
-        self.last_action = 'no_action'  # initialize agent action from last step
+        self.action_space = gym.spaces.Discrete(len(self.action_dict))
         
         # Gym setting - observation space
         # display surface is width x height x RGB
@@ -61,14 +51,7 @@ class Tanks_Env(gym.Env):
                                 high = 1, 
                                 shape = (self.game.width, self.game.height, 3),
                                 dtype = np.float32)
-
-        # collect key game state variables for use in reward function
-        # self.game_state = {
-        #     'blue_score' : self.game.score['Blue']
-        #     'red_score' : self.game.score['Red']
-
-        # }
-        
+            
     def set_seeds(self) -> None:
         " Sets random seeds for packages. Used for reproducibility"
         random.seed(self.seed)
@@ -81,59 +64,86 @@ class Tanks_Env(gym.Env):
         surface = pg.surfarray.array3d(pg.display.get_surface()).astype(np.uint8)
         return surface
 
-    def _newgame(self):
-        pass
-    
-    def _convert_action(self, numeric_action: int) -> str:
-        """" 
-        Converts the numerical action number chosen by the agent into an action for the action dictionary
-        INPUT: integer output from agent
-        OUTPUT: string of human readable action corresponding to agent action 
-        """
-        agent_action = self.action_list[numeric_action]
-        return agent_action
-
-    def _post_action(self, agent_action: str) -> None:
-        ''' 
-        Converts the agent's chosen action into pygame input
-        Thanks to examples at https://github.com/ntasfi/PyGame-Learning-Environment/blob/master/ple/games/base/pygamewrapper.py
-        '''
-        self.action = self.action_dict[agent_action]
-
-        kd = pg.event.Event(KEYDOWN, {"key": self.action})
-        ku = pg.event.Event(KEYUP, {"key": self.last_action})
-
-        pg.event.post(kd)
-        pg.event.post(ku)
-
-        self.last_action = self.action
-
-    def do_action(self, agent_action: str) -> None:
+    def _do_action(self, numeric_action: int) -> None:
         ''' 
         Converts the agent's chosen action into pygame input
         '''
+        self.agent_action = self.action_dict[numeric_action]
 
-        self.action = self.action_dict[agent_action]
-        if self.action == 'left':
+        self.game.player.vel = vec(0, 0)
+        self.game.player.rot_speed = 0
+
+        if self.agent_action == 'left':
             self.game.player.rot_speed = PLAYER_ROTATION_SPEED
-        if self.action == 'right':
+        if self.agent_action == 'right':
             self.game.player.rot_speed = -PLAYER_ROTATION_SPEED
-        if self.action == 'up':
+        if self.agent_action == 'forward':
              self.game.player.vel = vec(PLAYER_SPEED, 0).rotate(-self.game.player.rot)
-        if self.action == 'down':
+        if self.agent_action == 'backward':
             self.game.player.vel = vec(-PLAYER_SPEED / 2, 0).rotate(-self.game.player.rot)
-        if self.action == 'shoot':
-            shoot_bullet(self.game)
-        if self.action == 'mine':
-            lay_mine(self.game)
+        if self.agent_action == 'shoot':
+            shoot_bullet(self.game.player)
+        if self.agent_action == 'mine':
+            lay_mine(self.game.player)
 
-    def _get_reward(self, actions, done) -> float:
+    def get_dis_bearing_to_target(self, target_sprite):
+        dist = self.game.player.pos.distance_to(target_sprite.pos)
+        bearing = self.game.player.pos.angle_to(target_sprite.pos)
+        return dist, bearing
+
+    def get_game_states(self) -> dict:
+        game_state = {}
+        # Game score
+        game_state['blue_score'] = self.game.score['Blue']
+        game_state['red_score'] = self.game.score['Red']
+
+        # Player stats
+        game_state['health'] = self.game.player.health
+        game_state['bullets'] = self.game.player.bullets
+        game_state['mines'] = self.game.player.mines
+
+        # Goal
+        goal_dist, goal_bearing = self.get_dis_bearing_to_target(self.game.goal)
+        game_state['goal'] = {}
+        game_state['goal']['distance'] = goal_dist
+        game_state['goal']['bearing'] = goal_bearing
+
+        # Red Tank
+        for num, red_tank in enumerate(self.game.mobs):
+            dist, bearing = self.get_dis_bearing_to_target(red_tank)
+            key_string = 'red_tank_' + str(num)
+            game_state[key_string] = {}
+            game_state[key_string]['distance'] = dist
+            game_state[key_string]['bearing'] = bearing
+
+        # Health kits
+        for num, health_kit in enumerate(self.game.health_kits):
+            dist, bearing = self.get_dis_bearing_to_target(health_kit)
+            available = health_kit.available
+            key_string = 'health_' + str(num)
+            game_state[key_string] = {}
+            game_state[key_string]['distance'] = dist
+            game_state[key_string]['bearing'] = bearing
+            game_state[key_string]['available'] = available
+
+        # Ammo kits
+        for num, ammo_box in enumerate(self.game.ammo_boxes):
+            dist, bearing = self.get_dis_bearing_to_target(ammo_box)
+            available = ammo_box.available
+            key_string = 'ammo_' + str(num)
+            game_state[key_string] = {}
+            game_state[key_string]['distance'] = dist
+            game_state[key_string]['bearing'] = bearing
+            game_state[key_string]['available'] = available
+
+        return game_state
+
+    def _get_reward(self, done, info) -> float:
         '''
         Calculates rewards based on how close the agent is to achieving the goal.
         '''
         reward = 1.
         return reward
-
 
     def _check_terminal_state(self) -> bool:
         ''' Checks if game is complete and returns a true or false boolean.
@@ -145,7 +155,7 @@ class Tanks_Env(gym.Env):
             isDone = True
         return isDone
 
-    def update_game(self):
+    def _update_game(self):
         self.game.advance_time()
         self.game.events()
         self.game.update()
@@ -160,40 +170,42 @@ class Tanks_Env(gym.Env):
         
         Input: action -> int
         
-        outputs: list [next_state, reward, done, info] 
-            next_state = list - updated state based on the agents actions
+        outputs: tuple (next_observation, reward, done, info) 
+            next_observation = np.array - updated state based on the agents actions
             reward = float - reward from environment based on action and given state
             done = boolean - True if the agent is in a terminal state and False otherwise
             info = dict - additional information about the step (empty in this case)
         '''
 
-        agent_action = self._convert_action(action)
-        #self._post_action(agent_action)
-        self.do_action(agent_action)
+        # Get game state before agent action
+        prior_game_dict = self.get_game_states()
+
+        # Perform agent's action in the game
+        self._do_action(action)
 
         # Update game
-        self.update_game()
+        self._update_game()
 
-        # step counter for episode length
-        self.steps += 1 # step counter
-
-        # Get next state
-        next_state = self._get_observation()
+        # Get next state observation
+        next_observation = self._get_observation()
 
         # Check if in terminal state
         done = self._check_terminal_state()
 
-        # Check if at max episode length
-        if self.steps >= self.max_steps:
-            done = True
-
-        # Get reward
-        reward = self._get_reward(agent_action, done)
+        # Collet game state info after actions
+        new_game_dict = self.get_game_states()
 
         # Other info to pass to next state
-        info = {}
+        info = {'prior_state': prior_game_dict,
+                'new_state': new_game_dict}
+
+        # Get reward
+        reward = self._get_reward(done, info)
+
+        # step counter for episode length
+        self.steps += 1 # step counter
        
-        return next_state, reward, done, info
+        return next_observation, reward, done, info
 
     def reset(self) -> np.array:
         ''' 
@@ -202,18 +214,17 @@ class Tanks_Env(gym.Env):
         self.game.new()
         self.game.player.human_player = False # Set player to agent
         self.game.playing = True
-        state = self._get_observation()
-        return state
+        observation = self._get_observation()
+        return observation
 
 
 if __name__ == '__main__':
     game = Game()
     env = Tanks_Env(game)
 
-    state = env.reset()
-    count = 0
+    observation = env.reset()
     done = False
     while not done:
         action = env.action_space.sample()
-        state, reward, done, info = env.step(action)
+        observation, reward, done, info = env.step(action)
         pass
