@@ -49,7 +49,9 @@ During game play, players or the cpu player can regain 3 points of life by touch
 
 This repo contains the following folders and files:
 
-* [main](main.py) : Run this file to play the game. This controls the pygame game flow.
+* [tank_game](tank_game.py) : Run this file to play the game. This controls the pygame game flow.
+
+* [tank_gym](tank_gym.py) : Creates a Gym environment for training a RL agent to play the [tank_game](tank_game.py).
 
 * [Tools](Tools): This folder contains several classes and methods used in the main script.
   * [sprites.py](Tools/sprites.py) has classes for all the sprites used in the game such as the player tank, cpu-controlled red tank, goal, health kit, etc.

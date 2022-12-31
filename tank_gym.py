@@ -10,7 +10,7 @@ import pygame as pg
 
 # Functions in other scripts of this repo
 from Config.settings import *
-from main import Game
+from tank_game import Game
 from Tools.sprites import shoot_bullet, lay_mine
 
 
