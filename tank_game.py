@@ -108,7 +108,7 @@ class Game:
     def game_over(self):
         game_over_waiting = True
         wait_time = 1000
-        self.draw()
+        #self.draw()
         while game_over_waiting: 
             self.advance_time()
             self.game_over_text()
