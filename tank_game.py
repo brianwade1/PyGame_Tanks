@@ -9,7 +9,7 @@ import pygame as pg
 # Functions in other scripts of this repo
 from Tools.sprites import Player, Wall, Mob, Goal, Ammo, Health
 from Tools.data_loader import DataLoader
-from Config.settings import *
+from Config.game_settings import *
 from Tools.sprites import Explosion
 from Tools.helper_methods import collide_hit_rect, draw_text
 

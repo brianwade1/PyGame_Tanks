@@ -9,7 +9,8 @@ import gym
 import pygame as pg
 
 # Functions in other scripts of this repo
-from Config.settings import *
+from Config.game_settings import *
+from Config.RL_settings import *
 from tank_game import Game
 from Tools.sprites import shoot_bullet, lay_mine
 
@@ -97,6 +98,10 @@ class Tanks_Env(gym.Env):
         game_state['blue_score'] = self.game.score['Blue']
         game_state['red_score'] = self.game.score['Red']
 
+        # Game time and state
+        game_state['count_down_time'] = self.game.time_countdown
+        game_state['playing'] = self.game.playing
+
         # Player stats
         game_state['health'] = self.game.player.health
         game_state['bullets'] = self.game.player.bullets
@@ -142,7 +147,34 @@ class Tanks_Env(gym.Env):
         '''
         Calculates rewards based on how close the agent is to achieving the goal.
         '''
-        reward = 1.
+        # Reward for blue scoring
+        blue_score_prior = info['prior_state']['blue_score']
+        blue_score_new = info['new_state']['blue_score']
+        blue_score_delta = blue_score_new - blue_score_prior
+        r_blue_score = blue_score_delta
+
+        # Reward for red scoring
+        red_score_prior = info['prior_state']['red_score']
+        red_score_new = info['new_state']['red_score']
+        red_score_delta = red_score_new - red_score_prior
+        r_red_score = -red_score_delta
+
+        # reward for step
+        r_step = R_EACH_STEP
+
+        # Reward for dying before end of game
+        if not info['new_state']['playing'] and info['new_state']['count_down_time'] > 0.0:
+            r_dying = R_DYING
+        else:
+            r_dying = 0
+
+        # Reward for living to end of game
+        if not info['new_state']['playing'] and info['new_state']['count_down_time'] <= 0.0:
+            r_end_game = R_LIVING_TO_END
+        else:
+            r_end_game = 0
+
+        reward = r_blue_score + r_red_score + r_step + r_dying + r_end_game
         return reward
 
     def _check_terminal_state(self) -> bool:

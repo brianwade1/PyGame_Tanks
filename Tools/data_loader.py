@@ -1,6 +1,6 @@
 import os
 import pygame as pg
-from Config.settings import *
+from Config.game_settings import *
 
 class DataLoader:
     def __init__(self, current_dir):

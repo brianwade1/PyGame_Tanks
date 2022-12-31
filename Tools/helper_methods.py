@@ -1,5 +1,5 @@
 import pygame as pg
-from Config.settings import *
+from Config.game_settings import *
 
 def collide_hit_rect(one, two):
     return one.hit_rect.colliderect(two.rect)

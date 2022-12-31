@@ -3,7 +3,7 @@ import heapq
 
 import pygame as pg
 
-from Config.settings import *
+from Config.game_settings import *
 
 vec = pg.math.Vector2
 
