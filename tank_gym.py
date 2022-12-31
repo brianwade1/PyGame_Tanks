@@ -20,13 +20,13 @@ class Tanks_Env(gym.Env):
     Custom Environment using the gym interface for the tanks game in this repo 
     """
 
-    def __init__(self, game, seed=42):
+    def __init__(self, game, render=True, seed=42):
         # admin settings
         self.game = game
         self.steps = 0 #step counter
 
         # See display
-        self.see_display = True
+        self.render_display = render
         
         # Set random seeds
         self.seed = seed
@@ -193,9 +193,6 @@ class Tanks_Env(gym.Env):
         self.game.update()
         self.game.timer()
 
-        if self.see_display:
-            self.game.draw()
-
     def step(self, action) -> list([np.array, float, bool, dict]):
         '''
         Steps the pygame environment forward using the agent's actions
@@ -249,14 +246,23 @@ class Tanks_Env(gym.Env):
         observation = self._get_observation()
         return observation
 
+    def render(self):
+        if self.render_display:
+            self.game.draw()
+
+    def close(self):
+        self.game.quit()
+
 
 if __name__ == '__main__':
     game = Game()
-    env = Tanks_Env(game)
+    env = Tanks_Env(game, render=True)
 
     observation = env.reset()
     done = False
     while not done:
         action = env.action_space.sample()
         observation, reward, done, info = env.step(action)
+        env.render()
         pass
+    env.close()
