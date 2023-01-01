@@ -38,7 +38,7 @@ Other_images = {
 }
 
 # game settings
-FPS = 60
+FPS = 30
 TITLE = "Tank Game"
 MAP_FILE = 'map_simple.txt'
 BACKGROUND_COLOR = DARKGREY
