@@ -94,7 +94,10 @@ def route_to_closets_ammo(sprite):
         ammo_boxes_dists[dist] = ammo_box
     ammo_box_to_move = ammo_boxes_dists[min(ammo_boxes_dists)]
     route = sprite.A_Star.find_route(sprite.pos, ammo_box_to_move.pos)
-    sprite.route = route
+    if route is not None:
+        sprite.route = route
+    else:
+        sprite.route = [tuple(self.pos)]
 
 def route_to_closets_health(sprite):
     health_kit_dists = {}
@@ -106,11 +109,17 @@ def route_to_closets_health(sprite):
         health_kit_dists[dist] = health_kit
     health_kit_to_move = health_kit_dists[min(health_kit_dists)]
     route = sprite.A_Star.find_route(sprite.pos, health_kit_to_move.pos)
-    sprite.route = route
+    if route is not None:
+        sprite.route = route
+    else:
+        sprite.route = [tuple(self.pos)]
 
 def route_to_target_sprite(sprite, target):
     route = sprite.A_Star.find_route(sprite.pos, target.pos)
-    sprite.route = route
+    if route is not None:
+        sprite.route = route
+    else:
+        sprite.route = [tuple(self.pos)]
 
 
 class Player(pg.sprite.Sprite):

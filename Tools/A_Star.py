@@ -149,8 +149,11 @@ class A_Star():
         start_location = convert_from_game_loc(start)
         goal_location = convert_from_game_loc(goal)
         route = self.astar(start_location, goal_location)
-        #route = route + [start_location]
-        route = route[::-1]
-        map_route = convert_to_map_route(start_location, route, self.map)
+        if route is not None:
+            #route = route + [start_location]
+            route = route[::-1]
+            map_route = convert_to_map_route(start_location, route, self.map)
+        else:
+            map_route = None
         return map_route
 
