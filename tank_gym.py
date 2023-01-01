@@ -11,8 +11,8 @@ import pygame as pg
 # Functions in other scripts of this repo
 from Config.game_settings import *
 from Config.RL_settings import *
-from tank_game import Game
 from Tools.sprites import shoot_bullet, lay_mine
+from tank_game import Game
 
 
 class Tanks_Env(gym.Env):
@@ -20,9 +20,9 @@ class Tanks_Env(gym.Env):
     Custom Environment using the gym interface for the tanks game in this repo 
     """
 
-    def __init__(self, game, render=True, seed=42):
+    def __init__(self, render=True, seed=42):
         # admin settings
-        self.game = game
+        self.game = Game(show_display=render)
         self.steps = 0 #step counter
 
         # See display
@@ -46,12 +46,12 @@ class Tanks_Env(gym.Env):
         self.action_space = gym.spaces.Discrete(len(self.action_dict))
         
         # Gym setting - observation space
-        # display surface is width x height x RGB
+        # display surface is RGB x width x height
         self.observation_space = gym.spaces.Box(
                                 low = 0,
-                                high = 1, 
-                                shape = (self.game.width, self.game.height, 3),
-                                dtype = np.float32)
+                                high = 255, 
+                                shape = (3, self.game.width, self.game.height),
+                                dtype = np.uint8)
             
     def set_seeds(self) -> None:
         " Sets random seeds for packages. Used for reproducibility"
@@ -62,8 +62,13 @@ class Tanks_Env(gym.Env):
         '''
         transforms the pygame surface (display) into a numpy array
         '''
-        surface = pg.surfarray.array3d(pg.display.get_surface()).astype(np.uint8)
-        return surface
+        # Extract surface as 3d array (width x height x channels)
+        surface = pg.surfarray.array3d(pg.display.get_surface())
+        # convert to np.uint8 for Stable-Baselines3 CNN Feature Extractor
+        surface = surface.astype(np.uint8)
+        # Change to channel feature first b/c Stable-Baselines CNN Feature Extractor expects channel first
+        observation = np.moveaxis(surface, -1, 0)
+        return observation
 
     def _do_action(self, numeric_action: int) -> None:
         ''' 
@@ -255,8 +260,7 @@ class Tanks_Env(gym.Env):
 
 
 if __name__ == '__main__':
-    game = Game()
-    env = Tanks_Env(game, render=True)
+    env = Tanks_Env(render=True)
 
     observation = env.reset()
     done = False

@@ -14,7 +14,7 @@ from Tools.sprites import Explosion
 from Tools.helper_methods import collide_hit_rect, draw_text
 
 class Game:
-    def __init__(self):
+    def __init__(self, show_display=True):
         # Initialize the pygame module which loads objects specific to operating system and hardware
         pg.init()
         self.current_dir = os.path.dirname(__file__)
@@ -25,7 +25,11 @@ class Game:
         self.get_map_dimensions()
 
         # Set screen
-        self.screen = pg.display.set_mode((self.width, self.height))
+        if not show_display:
+            flags = pg.HIDDEN
+        else:
+            flags = 0
+        self.screen = pg.display.set_mode((self.width, self.height), flags)
         pg.display.set_caption(TITLE)
 
         # Load images
@@ -278,7 +282,14 @@ class Game:
         draw_text(self.screen, blue_ammo_string, BLACK, FONT_SIZE, 0.2 * self.width, 0.96 * self.height, 0)
 
         # Red ammo display
-        red_ammo_string = f"RED - Bullets: {self.mobs.sprites()[0].bullets} Mines: {self.mobs.sprites()[0].mines}"
+        min_bullets = MOB_BULLETS
+        min_mines = MOB_MINES
+        for sprite in self.mobs.sprites():
+            if sprite.bullets < min_bullets:
+                min_bullets = sprite.bullets
+            if sprite.mines < min_mines:
+                min_mines = sprite.mines
+        red_ammo_string = f"RED - Bullets: {min_bullets} Mines: {min_mines}"
         draw_text(self.screen, red_ammo_string, BLACK, FONT_SIZE, 0.8 * self.width, 0.96 * self.height, 0)
 
         pg.display.flip()
