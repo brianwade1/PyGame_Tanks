@@ -15,3 +15,6 @@ __pycashe__/*
 # Pygame
 *.DS_*
 .DS_Store
+
+# Tensorboard logs
+*_tensorboard/*
