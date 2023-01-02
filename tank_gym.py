@@ -20,10 +20,11 @@ class Tanks_Env(gym.Env):
     Custom Environment using the gym interface for the tanks game in this repo 
     """
 
-    def __init__(self, render=True, seed=42):
+    def __init__(self, CNN_obs=False, render=True, seed=42):
         # admin settings
         self.game = Game(show_display=render)
         self.steps = 0 #step counter
+        self.CNN_obs = CNN_obs
 
         # See display
         self.render_display = render
@@ -47,20 +48,67 @@ class Tanks_Env(gym.Env):
         
         # Gym setting - observation space
         # display surface is RGB x width x height
-        self.observation_space = gym.spaces.Box(
-                                low = 0,
-                                high = 255, 
-                                shape = (3, self.game.width, self.game.height),
-                                dtype = np.uint8)
-            
+        if self.CNN_obs:
+            self.observation_space = gym.spaces.Box(
+                                    low = 0,
+                                    high = 255, 
+                                    shape = (3, self.game.width, self.game.height),
+                                    dtype = np.uint8)
+        else:
+            # get number of red tanks, ammo, and health
+            num_red = 0
+            num_ammo = 0
+            num_health = 0
+            for row in self.game.map_data:
+                if 'M' in row:
+                    num_in_row = row.count('M')
+                    num_red += num_in_row
+                if 'A' in row:
+                    num_in_row = row.count('A')
+                    num_ammo += num_in_row
+                if 'H' in row:
+                    num_in_row = row.count('H')
+                    num_health += num_in_row
+
+            count_down_low = 0.
+            count_down_high = np.inf
+            goal_low = [0, 0, -np.inf, -np.inf] #dist, bearing, pos_x, pos_y
+            goal_high = [np.inf, 360, np.inf, np.inf] #dist, bearing, pos_x, pos_y
+            player_low = [-np.inf, -np.inf, 0, 0, 0, 0] #pos_x, pos_y, heading, health, bullets, mines
+            player_high = [np.inf, np.inf, 360, np.inf, np.inf, np.inf] #pos_x, pos_y, heading, health, bullets, mines
+
+            red_single_low = [0, 0, -np.inf, -np.inf, 0, 0, 0, 0] #dist, bearing, pos_x, pos_y, heading, health, bullets, mines
+            red_single_high = [np.inf, 360, np.inf, np.inf, 360, np.inf, np.inf, np.inf] #dist, bearing, pos_x, pos_y, heading, health, bullets, mines
+            red_low = num_red * red_single_low
+            red_high = num_red * red_single_high
+
+            health_single_low = [0, 0, -np.inf, -np.inf, 0] #dist, bearing, pos_x, pos_y, available
+            health_single_high = [np.inf, 360, np.inf, np.inf, 1] #dist, bearing, pos_x, pos_y, available
+            health_low = num_health * health_single_low
+            health_high = num_health * health_single_high
+
+            ammo_single_low = [0, 0, -np.inf, -np.inf, 0] #dist, bearing, pos_x, pos_y, available
+            ammo_single_high = [np.inf, 360, np.inf, np.inf, 1] #dist, bearing, pos_x, pos_y, available
+            ammo_low = num_ammo * ammo_single_low
+            ammo_high = num_ammo * ammo_single_high
+
+            low_obs = np.array([count_down_low, *goal_low, *player_low, *red_low, *health_low, *ammo_low], dtype=np.float32)
+            high_obs = np.array([count_down_high, *goal_high, *player_high, *red_high, *health_high, *ammo_high], dtype=np.float32)
+            self.observation_space = gym.spaces.Box(
+                                                low=low_obs,
+                                                high=high_obs,
+                                                dtype=np.float32
+                                                )
+                
     def set_seeds(self) -> None:
         " Sets random seeds for packages. Used for reproducibility"
         random.seed(self.seed)
         np.random.seed(self.seed)
 
-    def _get_observation(self) -> np.array:
+    def _get_CNN_observation(self) -> np.array:
         '''
         transforms the pygame surface (display) into a numpy array
+        output will be a np.uint8 array of RGB channels x width x height
         '''
         # Extract surface as 3d array (width x height x channels)
         surface = pg.surfarray.array3d(pg.display.get_surface())
@@ -69,6 +117,41 @@ class Tanks_Env(gym.Env):
         # Change to channel feature first b/c Stable-Baselines CNN Feature Extractor expects channel first
         observation = np.moveaxis(surface, -1, 0)
         return observation
+
+    def _get_MLP_observation(self) -> np.array:
+        '''
+        transforms the pygame surface (display) into a numpy array
+        '''
+        # Extract surface as 3d array (width x height x channels)
+        game_dict = self.get_game_states()
+
+        game_time = game_dict['count_down_time']
+
+        goal_state = []
+        for key, value in game_dict['goal'].items():
+            goal_state.append(value)
+
+        blue_state = []
+        for key, value in game_dict['player'].items():
+            blue_state.append(value)
+            
+        red_state = []
+        for tank_num, tank_attributes in game_dict['red_tank'].items():
+            for key, value in tank_attributes.items():
+                red_state.append(value)
+                
+        health_state = []
+        for health_num, health_attributes in game_dict['health'].items():
+            for key, value in health_attributes.items():
+                health_state.append(value)
+                
+        ammo_state = []
+        for ammo_num, ammo_attributes in game_dict['ammo'].items():
+            for key, value in ammo_attributes.items():
+                ammo_state.append(value)
+
+        observation = [game_time, *goal_state, *blue_state, *red_state, *health_state, *ammo_state]
+        return np.array(observation, dtype=np.float32)
 
     def _do_action(self, numeric_action: int) -> None:
         ''' 
@@ -108,43 +191,67 @@ class Tanks_Env(gym.Env):
         game_state['playing'] = self.game.playing
 
         # Player stats
-        game_state['health'] = self.game.player.health
-        game_state['bullets'] = self.game.player.bullets
-        game_state['mines'] = self.game.player.mines
+        game_state['player'] = {}
+        pos_x, pox_y = self.game.player.pos
+        game_state['player']['pos_x'] = pos_x
+        game_state['player']['pos_y'] = pox_y
+        game_state['player']['heading'] = self.game.player.rot
+        game_state['player']['health'] = self.game.player.health
+        game_state['player']['bullets'] = self.game.player.bullets
+        game_state['player']['mines'] = self.game.player.mines
 
         # Goal
         goal_dist, goal_bearing = self.get_dis_bearing_to_target(self.game.goal)
+        pos_x, pox_y = self.game.goal.pos
         game_state['goal'] = {}
         game_state['goal']['distance'] = goal_dist
         game_state['goal']['bearing'] = goal_bearing
+        game_state['goal']['pos_x'] = pos_x
+        game_state['goal']['pos_y'] = pox_y
 
         # Red Tank
+        game_state['red_tank'] = {}
         for num, red_tank in enumerate(self.game.mobs):
             dist, bearing = self.get_dis_bearing_to_target(red_tank)
-            key_string = 'red_tank_' + str(num)
-            game_state[key_string] = {}
-            game_state[key_string]['distance'] = dist
-            game_state[key_string]['bearing'] = bearing
+            pos_x, pox_y = red_tank.pos
+            key_string = str(num)
+            game_state['red_tank'][key_string] = {}
+            game_state['red_tank'][key_string]['distance'] = dist
+            game_state['red_tank'][key_string]['bearing'] = bearing
+            game_state['red_tank'][key_string]['pos_x'] = pos_x
+            game_state['red_tank'][key_string]['pos_y'] = pox_y
+            game_state['red_tank'][key_string]['heading'] = red_tank.rot
+            game_state['red_tank'][key_string]['health'] = red_tank.health
+            game_state['red_tank'][key_string]['bullets'] = red_tank.bullets
+            game_state['red_tank'][key_string]['mines'] = red_tank.mines
 
         # Health kits
+        game_state['health'] = {}
         for num, health_kit in enumerate(self.game.health_kits):
             dist, bearing = self.get_dis_bearing_to_target(health_kit)
+            pos_x, pox_y = health_kit.pos
             available = health_kit.available
-            key_string = 'health_' + str(num)
-            game_state[key_string] = {}
-            game_state[key_string]['distance'] = dist
-            game_state[key_string]['bearing'] = bearing
-            game_state[key_string]['available'] = available
+            key_string = str(num)
+            game_state['health'][key_string] = {}
+            game_state['health'][key_string]['distance'] = dist
+            game_state['health'][key_string]['bearing'] = bearing
+            game_state['health'][key_string]['pos_x'] = pos_x
+            game_state['health'][key_string]['pos_y'] = pox_y
+            game_state['health'][key_string]['available'] = available
 
         # Ammo kits
+        game_state['ammo'] = {}
         for num, ammo_box in enumerate(self.game.ammo_boxes):
             dist, bearing = self.get_dis_bearing_to_target(ammo_box)
+            pos_x, pox_y = ammo_box.pos
             available = ammo_box.available
-            key_string = 'ammo_' + str(num)
-            game_state[key_string] = {}
-            game_state[key_string]['distance'] = dist
-            game_state[key_string]['bearing'] = bearing
-            game_state[key_string]['available'] = available
+            key_string = str(num)
+            game_state['ammo'][key_string] = {}
+            game_state['ammo'][key_string]['distance'] = dist
+            game_state['ammo'][key_string]['bearing'] = bearing
+            game_state['ammo'][key_string]['pos_x'] = pos_x
+            game_state['ammo'][key_string]['pos_y'] = pox_y
+            game_state['ammo'][key_string]['available'] = available
 
         return game_state
 
@@ -221,7 +328,10 @@ class Tanks_Env(gym.Env):
         self._update_game()
 
         # Get next state observation
-        next_observation = self._get_observation()
+        if self.CNN_obs:
+            next_observation = self._get_CNN_observation()
+        else:
+            next_observation = self._get_MLP_observation()
 
         # Check if in terminal state
         done = self._check_terminal_state()
@@ -248,7 +358,12 @@ class Tanks_Env(gym.Env):
         self.game.new()
         self.game.player.human_player = False # Set player to agent
         self.game.playing = True
-        observation = self._get_observation()
+
+        if self.CNN_obs:
+            observation = self._get_CNN_observation()
+        else:
+            observation = self._get_MLP_observation()
+
         return observation
 
     def render(self):
@@ -260,7 +375,7 @@ class Tanks_Env(gym.Env):
 
 
 if __name__ == '__main__':
-    env = Tanks_Env(render=True)
+    env = Tanks_Env(CNN_obs=False, render=True)
 
     observation = env.reset()
     done = False
