@@ -17,4 +17,5 @@ __pycashe__/*
 .DS_Store
 
 # Tensorboard logs
-*_tensorboard/*
+tensorboard/*
+tensorboard/

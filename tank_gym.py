@@ -72,22 +72,22 @@ class Tanks_Env(gym.Env):
 
             count_down_low = 0.
             count_down_high = np.inf
-            goal_low = [0, 0, -np.inf, -np.inf] #dist, bearing, pos_x, pos_y
+            goal_low = [0, -360, -np.inf, -np.inf] #dist, bearing, pos_x, pos_y
             goal_high = [np.inf, 360, np.inf, np.inf] #dist, bearing, pos_x, pos_y
-            player_low = [-np.inf, -np.inf, 0, 0, 0, 0] #pos_x, pos_y, heading, health, bullets, mines
+            player_low = [-np.inf, -np.inf, -360, 0, 0, 0] #pos_x, pos_y, heading, health, bullets, mines
             player_high = [np.inf, np.inf, 360, np.inf, np.inf, np.inf] #pos_x, pos_y, heading, health, bullets, mines
 
-            red_single_low = [0, 0, -np.inf, -np.inf, 0, 0, 0, 0] #dist, bearing, pos_x, pos_y, heading, health, bullets, mines
+            red_single_low = [0, -360, -np.inf, -np.inf, -360, 0, 0, 0] #dist, bearing, pos_x, pos_y, heading, health, bullets, mines
             red_single_high = [np.inf, 360, np.inf, np.inf, 360, np.inf, np.inf, np.inf] #dist, bearing, pos_x, pos_y, heading, health, bullets, mines
             red_low = num_red * red_single_low
             red_high = num_red * red_single_high
 
-            health_single_low = [0, 0, -np.inf, -np.inf, 0] #dist, bearing, pos_x, pos_y, available
+            health_single_low = [0, -360, -np.inf, -np.inf, 0] #dist, bearing, pos_x, pos_y, available
             health_single_high = [np.inf, 360, np.inf, np.inf, 1] #dist, bearing, pos_x, pos_y, available
             health_low = num_health * health_single_low
             health_high = num_health * health_single_high
 
-            ammo_single_low = [0, 0, -np.inf, -np.inf, 0] #dist, bearing, pos_x, pos_y, available
+            ammo_single_low = [0, -360, -np.inf, -np.inf, 0] #dist, bearing, pos_x, pos_y, available
             ammo_single_high = [np.inf, 360, np.inf, np.inf, 1] #dist, bearing, pos_x, pos_y, available
             ammo_low = num_ammo * ammo_single_low
             ammo_high = num_ammo * ammo_single_high
@@ -189,6 +189,10 @@ class Tanks_Env(gym.Env):
         # Game time and state
         game_state['count_down_time'] = self.game.time_countdown
         game_state['playing'] = self.game.playing
+        if self.game.time_countdown <= 0.0:
+            game_state['end_game'] = True
+        else:
+            game_state['end_game'] = False
 
         # Player stats
         game_state['player'] = {}
@@ -275,13 +279,13 @@ class Tanks_Env(gym.Env):
         r_step = R_EACH_STEP
 
         # Reward for dying before end of game
-        if not info['new_state']['playing'] and info['new_state']['count_down_time'] > 0.0:
+        if not info['new_state']['playing'] and not info['new_state']['end_game']:
             r_dying = R_DYING
         else:
             r_dying = 0
 
         # Reward for living to end of game
-        if not info['new_state']['playing'] and info['new_state']['count_down_time'] <= 0.0:
+        if not info['new_state']['playing'] and info['new_state']['end_game']:
             r_end_game = R_LIVING_TO_END
         else:
             r_end_game = 0
@@ -340,8 +344,13 @@ class Tanks_Env(gym.Env):
         new_game_dict = self.get_game_states()
 
         # Other info to pass to next state
+        if prior_game_dict['end_game'] or new_game_dict['end_game']:
+            is_success = True
+        else:
+            is_success = False
         info = {'prior_state': prior_game_dict,
-                'new_state': new_game_dict}
+                'new_state': new_game_dict,
+                'is_success' : is_success}
 
         # Get reward
         reward = self._get_reward(done, info)

@@ -13,10 +13,11 @@ from stable_baselines3 import A2C, PPO, DQN, SAC
 from stable_baselines3.common.policies import ActorCriticCnnPolicy
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3.common.env_checker import check_env
-from stable_baselines3.common.callbacks import EvalCallback, CallbackList, StopTrainingOnMaxEpisodes
+from stable_baselines3.common.callbacks import EvalCallback, CallbackList, StopTrainingOnMaxEpisodes, StopTrainingOnNoModelImprovement
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common import results_plotter
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv, VecNormalize
+#Note: ProgressBarCallback required tdqm and rich - only works when stable-baselines3 is installed from github
 
 # Other scripts in repo
 from Config.game_settings import *
@@ -26,12 +27,13 @@ from tank_gym import Tanks_Env
 
 class Agent_Dojo():
 
-    def __init__(self, env_class, env_deterministic, log_dir, model_dir, multi_process):
+    def __init__(self, env_class, RL_dir, log_dir, model_dir, multi_process, eval_render):
         self.env_class = env_class
-        self.deterministic = env_deterministic
-        self.log_dir = log_dir
-        self.model_dir = model_dir
+        self.RL_dir = RL_dir
+        self.log_dir = os.path.join(RL_dir, log_dir)
+        self.model_dir = os.path.join(RL_dir, model_dir)
         self.multi_process = multi_process
+        self.eval_render = eval_render
 
         # Create log and model folders if not exist or clear log if exists
         self.make_and_clear_folders()
@@ -59,6 +61,7 @@ class Agent_Dojo():
         return _init
 
     def make_env(self):
+        #train_log = os.path.join(self.log_dir, 'train/')
         if self.multi_process:
             num_CPUs_to_use = math.floor(0.9 * os.cpu_count())
             if num_CPUs_to_use == os.cpu_count():
@@ -66,72 +69,88 @@ class Agent_Dojo():
             if num_CPUs_to_use < 1:
                 num_CPUs_to_use == 1
             self.n_envs = num_CPUs_to_use
-            self.env = SubprocVecEnv([self.make_subprocess_env(self.log_dir, i) for i in range(n_envs)])
+            self.env = SubprocVecEnv([self.make_subprocess_env(self.train_log_dir, i) for i in range(n_envs)])
         else:
             self.n_envs = 1
-            self.env = DummyVecEnv([lambda: Monitor(self.env_class(render=False), self.log_dir)])
+            self.env = DummyVecEnv([lambda: Monitor(self.env_class(render=False), self.train_log_dir)])
+            
+        #eval_log = os.path.join(self.log_dir, 'eval/')
+        self.eval_env = DummyVecEnv([lambda: Monitor(self.env_class(render=self.eval_render), self.eval_log_dir)])
 
     def make_and_clear_folders(self):
         # Create model and log dir
-        os.makedirs(self.log_dir, exist_ok=True)
+        self.train_log_dir = os.path.join(self.log_dir, 'train/')
+        self.eval_log_dir = os.path.join(self.log_dir, 'eval/')
+        #os.makedirs(self.log_dir, exist_ok=True)
+        os.makedirs(self.train_log_dir, exist_ok=True)
+        os.makedirs(self.eval_log_dir, exist_ok=True)
         os.makedirs(self.model_dir, exist_ok=True)
 
-        # Clear contents of tmp log folder
-        for filename in os.listdir(self.log_dir):
-            file_path = os.path.join(self.log_dir, filename)
-            try:
-                if os.path.isfile(file_path) or os.path.islink(file_path):
-                    os.unlink(file_path)
-                elif os.path.isdir(file_path):
-                    shutil.rmtree(file_path)
-            except Exception as e:
-                print('Failed to delete %s. Reason: %s' % (file_path, e))
+        # # Clear contents of tmp log folder
+        # for filename in os.listdir(self.log_dir):
+        #     file_path = os.path.join(self.log_dir, filename)
+        #     try:
+        #         if os.path.isfile(file_path) or os.path.islink(file_path):
+        #             os.unlink(file_path)
+        #         elif os.path.isdir(file_path):
+        #             shutil.rmtree(file_path)
+        #     except Exception as e:
+        #         print('Failed to delete %s. Reason: %s' % (file_path, e))
 
     def observe_agent(self, agent):
         env = self.env_class(render=True)
         obs = env.reset()
         done = False
         while not done:
-            action, _states = agent.model.predict(obs, deterministic=self.deterministic)
+            action, _states = agent.model.predict(obs, deterministic=True)
             obs, reward, done, info = env.step(action)
             env.render()                               
 
-    def plot_results(self, log_folder, title='Episode Reward') -> None:
+    def plot_results(self, log_folder, dataset) -> None:
         """
         plot the results
-
-        :param log_folder: (str) the save location of the results to plot
-        :param title: (str) the title of the task to plot
         """
-        if not hasatter(self, 'movingAvgWindow'):
+        if not hasattr(self, 'movingAvgWindow'):
             self.movingAvgWindow = 50
 
         x, y = results_plotter.ts2xy(results_plotter.load_results(log_folder), 'episodes')
         
-        # Do moving average
-        weights = np.repeat(1.0, movingAvgWindow) / movingAvgWindow
-        y = np.convolve(y, weights, 'valid')
+        # if number of evals is less than twice the moving average window then dont do moving average
+        if len(y) > 2 * self.movingAvgWindow:
+            weights = np.repeat(1.0, self.movingAvgWindow) / self.movingAvgWindow
+            y = np.convolve(y, weights, 'valid')
+            smoothed = True
+        else:
+            smoothed = False
         
         # Truncate x
         x = x[len(x) - len(y):]
 
+        title = dataset + ' ' + 'Episode Reward'
+        fig_filename = dataset + '_Reward_History.png'
         fig = plt.figure(title)
         plt.plot(x, y)
         plt.xlabel('Number of Episodes')
         plt.ylabel('Rewards')
-        plt.title(title + " Smoothed")
+        if smoothed:
+            plt.title(title + " Smoothed")
+        else:
+            plt.title(title)
         #plt.show()
-        plt.savefig(os.path.join('Images', 'Reward_History.png'), bbox_inches='tight')
+        plt.savefig(os.path.join('Images', fig_filename), bbox_inches='tight')
         plt.close(fig)
 
     def post_training_results(self, movingAvgWindow=50):
         self.movingAvgWindow = movingAvgWindow
 
         if self.multi_process:
-            log_dir_0 = os.path.join(self.log_dir, '0')
-            self.plot_results(log_dir_0)
+            train_log_dir_0 = os.path.join(self.train_log_dir, '0')
+            eval_log_dir_0 = os.path.join(self.eval_log_dir, '0')
+            self.plot_results(train_log_dir_0, dataset='train')
+            self.plot_results(eval_log_dir_0, dataset='eval')
         else:
-            self.plot_results(self.log_dir)
+            self.plot_results(self.train_log_dir, dataset='train')
+            self.plot_results(self.eval_log_dir, dataset='eval')
 
 
 class CustomCNN(BaseFeaturesExtractor):
@@ -162,19 +181,57 @@ class CustomCNN(BaseFeaturesExtractor):
 
 class Base_Agent():
 
-    def __init__(self, env, max_episodes=10, verbose=True):
-        self.env = env
+    def __init__(self, dojo, model_name, max_episodes=None, progress_bar=False, max_no_improvement_evals=None, min_evals=5, n_eval_episodes=5, eval_freq=None, eval_render=False, verbose=True):
+        self.dojo = dojo
+        self.env = dojo.env
+        self.model_name = model_name
+        self.eval_env = dojo.eval_env
         self.max_episodes = max_episodes
+        self.progress_bar = progress_bar
+        self.max_no_improvement_evals = max_no_improvement_evals
+        self.min_evals = min_evals
+        self.eval_freq = eval_freq
+        self.n_eval_episodes = n_eval_episodes
+        self.eval_render = eval_render
         self.verbose = verbose
         self.datetime_hash = time.strftime('%Y_%m_%d_%H_%M_%S', time.localtime())
 
     def create_callbacks(self):
+        callback_list = []
         # Stops training when the model reaches the maximum number of episodes
-        callback_max_episodes = StopTrainingOnMaxEpisodes(
+        if self.max_episodes is not None:
+            callback_max_episodes = StopTrainingOnMaxEpisodes(
                                         max_episodes=self.max_episodes, 
                                         verbose=self.verbose)
-        # Create the callback list
-        callback_list = CallbackList([callback_max_episodes])
+            callback_list.append(callback_max_episodes)
+        # # Create progress bar
+        # if self.progress_bar:
+        #     progress_bar = ProgressBarCallback()
+        #     callback_list.append(progress_bar)
+
+        # stop if no improvement in reward
+        if self.max_no_improvement_evals is not None:
+            no_improve = StopTrainingOnNoModelImprovement(
+                                        max_no_improvement_evals=self.max_no_improvement_evals, 
+                                        min_evals=self.min_evals, 
+                                        verbose=self.verbose)
+
+        # eval env
+        if self.eval_freq is not None:
+            eval_log_dir = os.path.join(self.dojo.eval_log_dir, self.model_name)
+            best_model_dir = os.path.join(self.dojo.model_dir, self.model_name)
+            eval_call = EvalCallback(
+                                eval_env=self.eval_env,
+                                callback_after_eval = no_improve,
+                                n_eval_episodes=self.n_eval_episodes,
+                                eval_freq=self.eval_freq,
+                                log_path=eval_log_dir,
+                                best_model_save_path=best_model_dir,
+                                deterministic=True,
+                                render=self.eval_render,
+                                verbose=self.verbose)
+            callback_list.append(eval_call)
+        
         return callback_list
 
     def linear_schedule(self, initial_value: float):
@@ -197,14 +254,16 @@ class Base_Agent():
     
     def learn(self, total_timesteps):
         callback_list = self.create_callbacks()
-        #self.model.learn(total_timesteps=int(1e8), callback=callback_list)
-        self.model.learn(total_timesteps=total_timesteps)
+        if len(callback_list) > 0:
+            self.model.learn(total_timesteps=total_timesteps, callback=callback_list)
+        else:
+            self.model.learn(total_timesteps=total_timesteps)
 
 
 class PPO_CNN_Agent(Base_Agent):
 
-    def __init__(self, env, max_episodes, learning_rate=0.001, use_linear_LR_decrease=False, verbose=False):
-        super().__init__(env, max_episodes=max_episodes, verbose=verbose)
+    def __init__(self, dojo, model_name, max_episodes, max_no_improvement_evals, progress_bar=True, min_evals=10, n_eval_episodes=5, eval_freq=10000, eval_render=False, learning_rate=0.001, use_linear_LR_decrease=False, verbose=False):
+        super().__init__(dojo, model_name, max_episodes=max_episodes, progress_bar=progress_bar, max_no_improvement_evals=max_no_improvement_evals, min_evals=min_evals, eval_freq=eval_freq, eval_render=eval_render, verbose=verbose)
         self.policy_kwargs = { "features_extractor_class" : CustomCNN }
         # self.policy_kwargs = {
         #             'features_extractor_class' : CustomCNN,
@@ -216,9 +275,6 @@ class PPO_CNN_Agent(Base_Agent):
         self.n_epochs = 10
         self.initial_learning_rate = learning_rate
         self.policy = 'CnnPolicy' #ActorCriticCnnPolicy
-        self.model_type = 'PPO'
-        self.feature_extractor = 'CNN'
-        self.tensorboard_str = self.model_type + '_' + self.feature_extractor + '_tensorboard'
         
         if use_linear_LR_decrease:
             self.learning_rate = self.linear_schedule(self.initial_learning_rate)
@@ -233,9 +289,43 @@ class PPO_CNN_Agent(Base_Agent):
                     n_epochs=self.n_epochs,
                     clip_range = self.clip_range, 
                     ent_coef = self.ent_coef,
-                    verbose = self.verbose)
-                    #tensorboard_log = os.path.join(os.path.curdir,self.tensorboard_str,self.datetime_hash)
-                    #)
+                    verbose = self.verbose,
+                    tensorboard_log = os.path.join(self.dojo.RL_dir,'tensorboard/',self.model_name,self.datetime_hash)
+                    )
+
+
+class PPO_MLP_Agent(Base_Agent):
+
+    def __init__(self, dojo, model_name, max_episodes, max_no_improvement_evals, progress_bar=True, min_evals=10, n_eval_episodes=5, eval_freq=10000, eval_render=False, learning_rate=0.001, use_linear_LR_decrease=False, verbose=False):
+        super().__init__(dojo, model_name, max_episodes=max_episodes, progress_bar=progress_bar, max_no_improvement_evals=max_no_improvement_evals, min_evals=min_evals, eval_freq=eval_freq, eval_render=eval_render, verbose=verbose)
+        self.policy_kwargs = {
+                    'activation_fn' : th.nn.ReLU,
+                    'net_arch' : [{'pi' : [512, 256, 128], 'vf' : [512, 128, 32]}]
+                    }
+        self.clip_range = 0.2
+        self.ent_coef = 0.0
+        self.n_epochs = 10
+        self.initial_learning_rate = learning_rate
+        self.policy = 'MlpPolicy'
+        self.model_type = 'PPO'
+        self.feature_extractor = 'MLP'
+        
+        if use_linear_LR_decrease:
+            self.learning_rate = self.linear_schedule(self.initial_learning_rate)
+        else:
+            self.learning_rate = self.initial_learning_rate
+
+        self.model = PPO(
+                    self.policy, 
+                    self.env, 
+                    policy_kwargs = self.policy_kwargs, 
+                    learning_rate=self.learning_rate,
+                    n_epochs=self.n_epochs,
+                    clip_range = self.clip_range, 
+                    ent_coef = self.ent_coef,
+                    verbose = self.verbose,
+                    tensorboard_log = os.path.join(self.dojo.RL_dir,'tensorboard/',self.model_name,self.datetime_hash)
+                    )
 
 
 if __name__ == '__main__':
@@ -244,19 +334,42 @@ if __name__ == '__main__':
 
     dojo = Agent_Dojo(
                     env_class=env_class,
-                    env_deterministic=False, 
+                    RL_dir=RL_DIR,
                     log_dir=LOG_DIR, 
                     model_dir=MODEL_DIR,
-                    multi_process=MULTI_PROCESS)
+                    multi_process=MULTI_PROCESS,
+                    eval_render=EVAL_RENDER)
 
     #env = env_class(render=True)
 
-    agent = PPO_CNN_Agent(
-                    dojo.env, 
+    # agent = PPO_CNN_Agent(
+    #                 dojo, 
+    #                 model_name='PPO_CNN'
+    #                 max_episodes=MAX_EPISODES, 
+    #                 min_evals=MIN_EVALS,
+    #                 max_no_improvement_evals=MAX_NO_IMPROVE,
+    #                 progress_bar=PROGRESS_BAR,
+    #                 eval_render=EVAL_RENDER
+    #                 eval_freq=EVAL_FREQ,
+    #                 n_eval_episodes=N_EVAL_EPISODES,
+    #                 learning_rate=INITIAL_LEARN_RATE, 
+    #                 use_linear_LR_decrease=USE_LR_DECREASE,
+    #                 verbose=VERBOSE)
+
+    agent = PPO_MLP_Agent(
+                    dojo,
+                    model_name='PPO_MLP',
                     max_episodes=MAX_EPISODES, 
+                    max_no_improvement_evals=MAX_NO_IMPROVE,
+                    min_evals=MIN_EVALS,
+                    progress_bar=PROGRESS_BAR,
+                    eval_render=EVAL_RENDER,
+                    eval_freq=EVAL_FREQ,
+                    n_eval_episodes=N_EVAL_EPISODES,
                     learning_rate=INITIAL_LEARN_RATE, 
                     use_linear_LR_decrease=USE_LR_DECREASE,
                     verbose=VERBOSE)
+
 
     #agent = PPO('CnnPolicy', dojo.env, verbose=VERBOSE)
 
