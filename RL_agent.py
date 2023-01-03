@@ -61,7 +61,6 @@ class Agent_Dojo():
         return _init
 
     def make_env(self):
-        #train_log = os.path.join(self.log_dir, 'train/')
         if self.multi_process:
             num_CPUs_to_use = math.floor(0.9 * os.cpu_count())
             if num_CPUs_to_use == os.cpu_count():
@@ -74,7 +73,6 @@ class Agent_Dojo():
             self.n_envs = 1
             self.env = DummyVecEnv([lambda: Monitor(self.env_class(render=False), self.train_log_dir)])
             
-        #eval_log = os.path.join(self.log_dir, 'eval/')
         self.eval_env = DummyVecEnv([lambda: Monitor(self.env_class(render=self.eval_render), self.eval_log_dir)])
 
     def make_and_clear_folders(self):
@@ -181,7 +179,7 @@ class CustomCNN(BaseFeaturesExtractor):
 
 class Base_Agent():
 
-    def __init__(self, dojo, model_name, max_episodes=None, progress_bar=False, max_no_improvement_evals=None, min_evals=5, n_eval_episodes=5, eval_freq=None, eval_render=False, verbose=True):
+    def __init__(self, dojo, model_name, max_episodes=None, progress_bar=False, max_no_improvement_evals=None, min_evals=5, n_eval_episodes=5, eval_freq=None, eval_render=False, eval_verbose=True):
         self.dojo = dojo
         self.env = dojo.env
         self.model_name = model_name
@@ -193,7 +191,7 @@ class Base_Agent():
         self.eval_freq = eval_freq
         self.n_eval_episodes = n_eval_episodes
         self.eval_render = eval_render
-        self.verbose = verbose
+        self.eval_verbose = eval_verbose
         self.datetime_hash = time.strftime('%Y_%m_%d_%H_%M_%S', time.localtime())
 
     def create_callbacks(self):
@@ -202,7 +200,7 @@ class Base_Agent():
         if self.max_episodes is not None:
             callback_max_episodes = StopTrainingOnMaxEpisodes(
                                         max_episodes=self.max_episodes, 
-                                        verbose=self.verbose)
+                                        verbose=True)
             callback_list.append(callback_max_episodes)
         # # Create progress bar
         # if self.progress_bar:
@@ -214,7 +212,7 @@ class Base_Agent():
             no_improve = StopTrainingOnNoModelImprovement(
                                         max_no_improvement_evals=self.max_no_improvement_evals, 
                                         min_evals=self.min_evals, 
-                                        verbose=self.verbose)
+                                        verbose=True)
 
         # eval env
         if self.eval_freq is not None:
@@ -229,7 +227,7 @@ class Base_Agent():
                                 best_model_save_path=best_model_dir,
                                 deterministic=True,
                                 render=self.eval_render,
-                                verbose=self.verbose)
+                                verbose=self.eval_verbose)
             callback_list.append(eval_call)
         
         return callback_list
@@ -262,8 +260,8 @@ class Base_Agent():
 
 class PPO_CNN_Agent(Base_Agent):
 
-    def __init__(self, dojo, model_name, max_episodes, max_no_improvement_evals, progress_bar=True, min_evals=10, n_eval_episodes=5, eval_freq=10000, eval_render=False, learning_rate=0.001, use_linear_LR_decrease=False, verbose=False):
-        super().__init__(dojo, model_name, max_episodes=max_episodes, progress_bar=progress_bar, max_no_improvement_evals=max_no_improvement_evals, min_evals=min_evals, eval_freq=eval_freq, eval_render=eval_render, verbose=verbose)
+    def __init__(self, dojo, model_name, max_episodes, max_no_improvement_evals, progress_bar=True, min_evals=10, n_eval_episodes=5, eval_freq=10000, eval_render=False, learning_rate=0.001, use_linear_LR_decrease=False, train_verbose=False, eval_verbose=True):
+        super().__init__(dojo, model_name, max_episodes=max_episodes, progress_bar=progress_bar, max_no_improvement_evals=max_no_improvement_evals, min_evals=min_evals, eval_freq=eval_freq, eval_render=eval_render, eval_verbose=verbose)
         self.policy_kwargs = { "features_extractor_class" : CustomCNN }
         # self.policy_kwargs = {
         #             'features_extractor_class' : CustomCNN,
@@ -289,19 +287,20 @@ class PPO_CNN_Agent(Base_Agent):
                     n_epochs=self.n_epochs,
                     clip_range = self.clip_range, 
                     ent_coef = self.ent_coef,
-                    verbose = self.verbose,
+                    verbose = self.train_verbose,
                     tensorboard_log = os.path.join(self.dojo.RL_dir,'tensorboard/',self.model_name,self.datetime_hash)
                     )
 
 
 class PPO_MLP_Agent(Base_Agent):
 
-    def __init__(self, dojo, model_name, max_episodes, max_no_improvement_evals, progress_bar=True, min_evals=10, n_eval_episodes=5, eval_freq=10000, eval_render=False, learning_rate=0.001, use_linear_LR_decrease=False, verbose=False):
-        super().__init__(dojo, model_name, max_episodes=max_episodes, progress_bar=progress_bar, max_no_improvement_evals=max_no_improvement_evals, min_evals=min_evals, eval_freq=eval_freq, eval_render=eval_render, verbose=verbose)
+    def __init__(self, dojo, model_name, max_episodes, max_no_improvement_evals, progress_bar=True, min_evals=10, n_eval_episodes=5, eval_freq=10000, eval_render=False, learning_rate=0.001, use_linear_LR_decrease=False, train_verbose=False, eval_verbose=True):
+        super().__init__(dojo, model_name, max_episodes=max_episodes, progress_bar=progress_bar, max_no_improvement_evals=max_no_improvement_evals, min_evals=min_evals, eval_freq=eval_freq, eval_render=eval_render, eval_verbose=eval_verbose)
         self.policy_kwargs = {
                     'activation_fn' : th.nn.ReLU,
                     'net_arch' : [{'pi' : [512, 256, 128], 'vf' : [512, 128, 32]}]
                     }
+        self.train_verbose = train_verbose
         self.clip_range = 0.2
         self.ent_coef = 0.0
         self.n_epochs = 10
@@ -323,7 +322,7 @@ class PPO_MLP_Agent(Base_Agent):
                     n_epochs=self.n_epochs,
                     clip_range = self.clip_range, 
                     ent_coef = self.ent_coef,
-                    verbose = self.verbose,
+                    verbose = self.train_verbose,
                     tensorboard_log = os.path.join(self.dojo.RL_dir,'tensorboard/',self.model_name,self.datetime_hash)
                     )
 
@@ -339,8 +338,6 @@ if __name__ == '__main__':
                     model_dir=MODEL_DIR,
                     multi_process=MULTI_PROCESS,
                     eval_render=EVAL_RENDER)
-
-    #env = env_class(render=True)
 
     # agent = PPO_CNN_Agent(
     #                 dojo, 
@@ -368,10 +365,8 @@ if __name__ == '__main__':
                     n_eval_episodes=N_EVAL_EPISODES,
                     learning_rate=INITIAL_LEARN_RATE, 
                     use_linear_LR_decrease=USE_LR_DECREASE,
-                    verbose=VERBOSE)
-
-
-    #agent = PPO('CnnPolicy', dojo.env, verbose=VERBOSE)
+                    train_verbose=TRAIN_VERBOSE,
+                    eval_verbose=EVAL_VERBOSE)
 
     print('Starting the training!!')
     agent.learn(total_timesteps=TOTAL_TIMESTEPS)
