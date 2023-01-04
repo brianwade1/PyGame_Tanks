@@ -9,6 +9,7 @@ import torch as th
 import torch.nn as nn
 
 # Pip imports
+import stable_baselines3
 from stable_baselines3 import A2C, PPO, DQN, SAC
 from stable_baselines3.common.policies import ActorCriticCnnPolicy
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
@@ -51,7 +52,7 @@ class Agent_Dojo():
         :param log_dir_thisone: (str) the save location of the logs
         :param seed: (int) seed value for the env
         """
-        def _init():
+        def _init(self):
             sub_env = self.env_class(render=False, seed=seed)
             log_dir_thisone = os.path.join(self.log_dir, str(seed))
             os.makedirs(log_dir_thisone, exist_ok=True)
@@ -68,7 +69,7 @@ class Agent_Dojo():
             if num_CPUs_to_use < 1:
                 num_CPUs_to_use == 1
             self.n_envs = num_CPUs_to_use
-            self.env = SubprocVecEnv([self.make_subprocess_env(self.train_log_dir, i) for i in range(n_envs)])
+            self.env = SubprocVecEnv([self.make_subprocess_env(self.train_log_dir, i) for i in range(self.n_envs)])
         else:
             self.n_envs = 1
             self.env = DummyVecEnv([lambda: Monitor(self.env_class(render=False), self.train_log_dir)])
@@ -261,7 +262,7 @@ class Base_Agent():
 class PPO_CNN_Agent(Base_Agent):
 
     def __init__(self, dojo, model_name, max_episodes, max_no_improvement_evals, progress_bar=True, min_evals=10, n_eval_episodes=5, eval_freq=10000, eval_render=False, learning_rate=0.001, use_linear_LR_decrease=False, train_verbose=False, eval_verbose=True):
-        super().__init__(dojo, model_name, max_episodes=max_episodes, progress_bar=progress_bar, max_no_improvement_evals=max_no_improvement_evals, min_evals=min_evals, eval_freq=eval_freq, eval_render=eval_render, eval_verbose=verbose)
+        super().__init__(dojo, model_name, max_episodes=max_episodes, progress_bar=progress_bar, max_no_improvement_evals=max_no_improvement_evals, min_evals=min_evals, eval_freq=eval_freq, eval_render=eval_render, eval_verbose=eval_verbose)
         self.policy_kwargs = { "features_extractor_class" : CustomCNN }
         # self.policy_kwargs = {
         #             'features_extractor_class' : CustomCNN,
@@ -287,9 +288,9 @@ class PPO_CNN_Agent(Base_Agent):
                     n_epochs=self.n_epochs,
                     clip_range = self.clip_range, 
                     ent_coef = self.ent_coef,
-                    verbose = self.train_verbose,
-                    tensorboard_log = os.path.join(self.dojo.RL_dir,'tensorboard/',self.model_name,self.datetime_hash)
-                    )
+                    verbose = self.train_verbose)
+                    #tensorboard_log = os.path.join(self.dojo.RL_dir,'tensorboard/',self.model_name,self.datetime_hash)
+                    #)
 
 
 class PPO_MLP_Agent(Base_Agent):
@@ -322,9 +323,9 @@ class PPO_MLP_Agent(Base_Agent):
                     n_epochs=self.n_epochs,
                     clip_range = self.clip_range, 
                     ent_coef = self.ent_coef,
-                    verbose = self.train_verbose,
-                    tensorboard_log = os.path.join(self.dojo.RL_dir,'tensorboard/',self.model_name,self.datetime_hash)
-                    )
+                    verbose = self.train_verbose)
+                    #tensorboard_log = os.path.join(self.dojo.RL_dir,'tensorboard/',self.model_name,self.datetime_hash)
+                    #)
 
 
 if __name__ == '__main__':

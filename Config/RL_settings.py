@@ -1,9 +1,12 @@
 from Config.game_settings import *
 
 # Define agent rewards
-R_EACH_STEP = 0.05
+R_EACH_STEP = 0.01
 R_DYING = -10
 R_LIVING_TO_END = 10
+R_MOVING_TOWARD_GOAL = 0.1
+R_MOVING_TOWARD_HEALTH = 0.05
+R_MOVING_TOWARD_AMMO = 0.05
 
 # Directories
 RL_DIR = 'RL'

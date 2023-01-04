@@ -276,7 +276,32 @@ class Tanks_Env(gym.Env):
         r_red_score = -red_score_delta
 
         # reward for step
-        r_step = R_EACH_STEP
+        #r_step = R_EACH_STEP
+        # Moving to goal
+        if info['new_state']['goal']['distance'] < info['prior_state']['goal']['distance']:
+            r_step_goal = R_MOVING_TOWARD_GOAL
+        else:
+            r_step_goal = 0
+        # Moving to health if needed
+
+        # if info['new_state']['player']['health'] < 0.5*PLAYER_HEALTH:
+        #     if info['new_state']['health']['distance'] < info['prior_state']['health']['distance']:
+        #         r_step_health = R_MOVING_TOWARD_HEALTH
+        #     else:
+        #         r_step_health = 0
+        # else:
+        #     r_step_health = 0
+        # # Moving to ammo if needed
+        # if info['new_state']['player']['ammo'] < 0.5*PLAYER_BULLETS:
+        #     if info['new_state']['ammo']['distance'] < info['prior_state']['ammo']['distance']:
+        #         r_step_ammo = R_MOVING_TOWARD_AMMO
+        #     else:
+        #         r_step_ammo = 0
+        # else:
+        #     r_step_ammo = 0
+
+        r_step = r_step_goal # + r_step_health + r_step_ammo
+
 
         # Reward for dying before end of game
         if not info['new_state']['playing'] and not info['new_state']['end_game']:
