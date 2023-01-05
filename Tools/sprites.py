@@ -207,6 +207,7 @@ class Bullet(pg.sprite.Sprite):
         self.image = pg.transform.rotate(self.game.bullet_images[sprite.color], sprite.rot)
         self.rect = self.image.get_rect()
         self.pos = vec(pos)
+        self.dir = dir
         self.rect.center = pos
         self.vel = dir * BULLET_SPEED
         self.spawn_time = pg.time.get_ticks()
@@ -385,6 +386,7 @@ class Wall(pg.sprite.Sprite):
         self.y = y
         self.rect.x = x * TILESIZE
         self.rect.y = y * TILESIZE
+        self.pos = vec(self.rect.x, self.rect.y)
 
 
 class Goal(pg.sprite.Sprite):

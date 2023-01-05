@@ -18,7 +18,7 @@ from stable_baselines3.common.callbacks import EvalCallback, CallbackList, StopT
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common import results_plotter
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv, VecNormalize
-#Note: ProgressBarCallback required tdqm and rich - only works when stable-baselines3 is installed from github
+#Note: ProgressBarCallback requires tdqm and rich - only works when stable-baselines3 is installed from github (not pip or conda)
 
 # Other scripts in repo
 from Config.game_settings import *
@@ -299,7 +299,7 @@ class PPO_MLP_Agent(Base_Agent):
         super().__init__(dojo, model_name, max_episodes=max_episodes, progress_bar=progress_bar, max_no_improvement_evals=max_no_improvement_evals, min_evals=min_evals, eval_freq=eval_freq, eval_render=eval_render, eval_verbose=eval_verbose)
         self.policy_kwargs = {
                     'activation_fn' : th.nn.ReLU,
-                    'net_arch' : [{'pi' : [512, 256, 128], 'vf' : [512, 128, 32]}]
+                    'net_arch' : [{'pi' : [1028, 512, 128], 'vf' : [512, 128, 32]}]
                     }
         self.train_verbose = train_verbose
         self.clip_range = 0.2

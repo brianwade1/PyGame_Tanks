@@ -59,7 +59,8 @@ class Tanks_Env(gym.Env):
             num_red = 0
             num_ammo = 0
             num_health = 0
-            for row in self.game.map_data:
+            num_interior_walls = 0
+            for n_row, row in enumerate(self.game.map_data):
                 if 'M' in row:
                     num_in_row = row.count('M')
                     num_red += num_in_row
@@ -69,6 +70,11 @@ class Tanks_Env(gym.Env):
                 if 'H' in row:
                     num_in_row = row.count('H')
                     num_health += num_in_row
+                if '1' in row:
+                    for n_col, col in enumerate(list(row)):
+                        if col == '1' and (n_row != 0 and n_row != self.game.gridheight - 1) and (n_col != 0 and n_col != self.game.gridwidth - 1):
+                            num_interior_walls += 1
+
 
             count_down_low = 0.
             count_down_high = np.inf
@@ -92,8 +98,41 @@ class Tanks_Env(gym.Env):
             ammo_low = num_ammo * ammo_single_low
             ammo_high = num_ammo * ammo_single_high
 
-            low_obs = np.array([count_down_low, *goal_low, *player_low, *red_low, *health_low, *ammo_low], dtype=np.float32)
-            high_obs = np.array([count_down_high, *goal_high, *player_high, *red_high, *health_high, *ammo_high], dtype=np.float32)
+            # will only report closest bullet
+            bullet_low = [0, -360, -np.inf, -np.inf, -360] #dist, bearing, pos_x, pos_y, direction
+            bullet_high = [np.inf, 360, np.inf, np.inf, 360] #dist, bearing, pos_x, pos_y, direction
+
+            # will only report closest mine
+            mine_low = [0, -360, -np.inf, -np.inf] #dist, bearing, pos_x, pos_y
+            mine_high = [np.inf, 360, np.inf, np.inf] #dist, bearing, pos_x, pos_y
+
+            wall_single_low = [0, -360, -np.inf, -np.inf] #dist, bearing, pos_x, pos_y
+            wall_single_high = [np.inf, 360, np.inf, np.inf] #dist, bearing, pos_x, pos_y
+            wall_low = num_interior_walls * wall_single_low
+            wall_high = num_interior_walls * wall_single_high
+
+            low_obs = np.array([count_down_low, 
+                                *goal_low, 
+                                *player_low, 
+                                *red_low, 
+                                *health_low, 
+                                *ammo_low,
+                                *bullet_low,
+                                *mine_low,
+                                *wall_low], 
+                                dtype=np.float32)
+
+            high_obs = np.array([count_down_high, 
+                                *goal_high, 
+                                *player_high, 
+                                *red_high, 
+                                *health_high, 
+                                *ammo_high,
+                                *bullet_low,
+                                *mine_low,
+                                *wall_low], 
+                                dtype=np.float32)
+
             self.observation_space = gym.spaces.Box(
                                                 low=low_obs,
                                                 high=high_obs,
@@ -150,7 +189,46 @@ class Tanks_Env(gym.Env):
             for key, value in ammo_attributes.items():
                 ammo_state.append(value)
 
-        observation = [game_time, *goal_state, *blue_state, *red_state, *health_state, *ammo_state]
+        # Bullet (closet mob bullet)
+        if game_dict['bullets']:
+            closest_dist = np.inf
+            for bullet_num, bullet_attributes in game_dict['bullets'].items():
+                if bullet_attributes['distance'] < closest_dist:
+                    closest_dist = bullet_attributes['distance']
+                    bullet_state = []
+                    for key, value in bullet_attributes.items():
+                        bullet_state.append(value)
+        else:
+            bullet_state = [0, 0, 0, 0, 0]
+
+        # Mine (closest mob mine)
+        if game_dict['mines']:
+            closest_dist = np.inf
+            for mine_num, mine_attributes in game_dict['mines'].items():
+                if mine_attributes['distance'] < closest_dist:
+                    closest_dist = mine_attributes['distance']
+                    mine_state = []
+                    for key, value in mine_attributes.items():
+                        mine_state.append(value)
+        else:
+            mine_state = [0, 0, 0, 0]
+
+        # Interior Wall (all interior)
+        wall_state = []
+        for wall_num, wall_attributes in game_dict['walls'].items():
+            for key, value in wall_attributes.items():
+                wall_state.append(value)
+
+        observation = [game_time, 
+                        *goal_state, 
+                        *blue_state, 
+                        *red_state, 
+                        *health_state, 
+                        *ammo_state,
+                        *bullet_state,
+                        *mine_state,
+                        *wall_state]
+
         return np.array(observation, dtype=np.float32)
 
     def _do_action(self, numeric_action: int) -> None:
@@ -196,9 +274,9 @@ class Tanks_Env(gym.Env):
 
         # Player stats
         game_state['player'] = {}
-        pos_x, pox_y = self.game.player.pos
+        pos_x, pos_y = self.game.player.pos
         game_state['player']['pos_x'] = pos_x
-        game_state['player']['pos_y'] = pox_y
+        game_state['player']['pos_y'] = pos_y
         game_state['player']['heading'] = self.game.player.rot
         game_state['player']['health'] = self.game.player.health
         game_state['player']['bullets'] = self.game.player.bullets
@@ -206,24 +284,24 @@ class Tanks_Env(gym.Env):
 
         # Goal
         goal_dist, goal_bearing = self.get_dis_bearing_to_target(self.game.goal)
-        pos_x, pox_y = self.game.goal.pos
+        pos_x, pos_y = self.game.goal.pos
         game_state['goal'] = {}
         game_state['goal']['distance'] = goal_dist
         game_state['goal']['bearing'] = goal_bearing
         game_state['goal']['pos_x'] = pos_x
-        game_state['goal']['pos_y'] = pox_y
+        game_state['goal']['pos_y'] = pos_y
 
         # Red Tank
         game_state['red_tank'] = {}
         for num, red_tank in enumerate(self.game.mobs):
             dist, bearing = self.get_dis_bearing_to_target(red_tank)
-            pos_x, pox_y = red_tank.pos
+            pos_x, pos_y = red_tank.pos
             key_string = str(num)
             game_state['red_tank'][key_string] = {}
             game_state['red_tank'][key_string]['distance'] = dist
             game_state['red_tank'][key_string]['bearing'] = bearing
             game_state['red_tank'][key_string]['pos_x'] = pos_x
-            game_state['red_tank'][key_string]['pos_y'] = pox_y
+            game_state['red_tank'][key_string]['pos_y'] = pos_y
             game_state['red_tank'][key_string]['heading'] = red_tank.rot
             game_state['red_tank'][key_string]['health'] = red_tank.health
             game_state['red_tank'][key_string]['bullets'] = red_tank.bullets
@@ -233,29 +311,68 @@ class Tanks_Env(gym.Env):
         game_state['health'] = {}
         for num, health_kit in enumerate(self.game.health_kits):
             dist, bearing = self.get_dis_bearing_to_target(health_kit)
-            pos_x, pox_y = health_kit.pos
+            pos_x, pos_y = health_kit.pos
             available = health_kit.available
             key_string = str(num)
             game_state['health'][key_string] = {}
             game_state['health'][key_string]['distance'] = dist
             game_state['health'][key_string]['bearing'] = bearing
             game_state['health'][key_string]['pos_x'] = pos_x
-            game_state['health'][key_string]['pos_y'] = pox_y
+            game_state['health'][key_string]['pos_y'] = pos_y
             game_state['health'][key_string]['available'] = available
 
         # Ammo kits
         game_state['ammo'] = {}
         for num, ammo_box in enumerate(self.game.ammo_boxes):
             dist, bearing = self.get_dis_bearing_to_target(ammo_box)
-            pos_x, pox_y = ammo_box.pos
+            pos_x, pos_y = ammo_box.pos
             available = ammo_box.available
             key_string = str(num)
             game_state['ammo'][key_string] = {}
             game_state['ammo'][key_string]['distance'] = dist
             game_state['ammo'][key_string]['bearing'] = bearing
             game_state['ammo'][key_string]['pos_x'] = pos_x
-            game_state['ammo'][key_string]['pos_y'] = pox_y
+            game_state['ammo'][key_string]['pos_y'] = pos_y
             game_state['ammo'][key_string]['available'] = available
+
+        # Red Bullets
+        game_state['bullets'] = {}
+        for num, bullet in enumerate(self.game.mob_bullets):
+            dist, bearing = self.get_dis_bearing_to_target(bullet)
+            pos_x, pos_y = bullet.pos
+            direction = bullet.dir
+            key_string = str(num)
+            game_state['bullets'][key_string] = {}
+            game_state['bullets'][key_string]['distance'] = dist
+            game_state['bullets'][key_string]['bearing'] = bearing
+            game_state['bullets'][key_string]['pos_x'] = pos_x
+            game_state['bullets'][key_string]['pos_y'] = pos_y
+            game_state['bullets'][key_string]['direction'] = direction.angle_to(vec(1,0))
+
+        # Red Mines
+        game_state['mines'] = {}
+        for num, mine in enumerate(self.game.mob_mines):
+            dist, bearing = self.get_dis_bearing_to_target(mine)
+            pos_x, pos_y = mine.pos
+            key_string = str(num)
+            game_state['mines'][key_string] = {}
+            game_state['mines'][key_string]['distance'] = dist
+            game_state['mines'][key_string]['bearing'] = bearing
+            game_state['mines'][key_string]['pos_x'] = pos_x
+            game_state['mines'][key_string]['pos_y'] = pos_y
+
+        # Interior Walls
+        game_state['walls'] = {}
+        for num, wall in enumerate(self.game.walls):
+            pos_x, pos_y = wall.pos
+            if (pos_x != 0 and pos_x != self.game.width-TILESIZE) and (pos_y != 0 and pos_y != self.game.height-TILESIZE):
+                dist, bearing = self.get_dis_bearing_to_target(wall)
+                key_string = str(num)
+                game_state['walls'][key_string] = {}
+                game_state['walls'][key_string]['distance'] = dist
+                game_state['walls'][key_string]['bearing'] = bearing
+                game_state['walls'][key_string]['pos_x'] = pos_x
+                game_state['walls'][key_string]['pos_y'] = pos_y
 
         return game_state
 
