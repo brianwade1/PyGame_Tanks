@@ -120,7 +120,7 @@ class Tanks_Env(gym.Env):
                                 *bullet_low,
                                 *mine_low,
                                 *wall_low], 
-                                dtype=np.float32)
+                                dtype = np.float32)
 
             high_obs = np.array([count_down_high, 
                                 *goal_high, 
@@ -128,10 +128,10 @@ class Tanks_Env(gym.Env):
                                 *red_high, 
                                 *health_high, 
                                 *ammo_high,
-                                *bullet_low,
-                                *mine_low,
-                                *wall_low], 
-                                dtype=np.float32)
+                                *bullet_high,
+                                *mine_high,
+                                *wall_high], 
+                                dtype = np.float32)
 
             self.observation_space = gym.spaces.Box(
                                                 low=low_obs,
