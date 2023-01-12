@@ -18,6 +18,7 @@ from stable_baselines3.common.callbacks import EvalCallback, CallbackList, StopT
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common import results_plotter
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv, VecNormalize
+from stable_baselines3.common.env_util import make_vec_env
 #Note: ProgressBarCallback requires tdqm and rich - only works when stable-baselines3 is installed from github (not pip or conda)
 
 # Other scripts in repo
@@ -45,15 +46,16 @@ class Agent_Dojo():
         # create environment within monitor and/or multi process wrapper
         self.make_env()
 
-    def make_subprocess_env(log_dir_thisone, seed=42):
+    def make_subprocess_env(self, log_dir_thisone, seed=42):
         """
         Make environments within a SubprocVecEnv call
 
         :param log_dir_thisone: (str) the save location of the logs
         :param seed: (int) seed value for the env
         """
-        def _init(self):
-            sub_env = self.env_class(render=False, seed=seed)
+        env_class = self.env_class
+        def _init():
+            sub_env = env_class(render=False, seed=seed)
             log_dir_thisone = os.path.join(self.log_dir, str(seed))
             os.makedirs(log_dir_thisone, exist_ok=True)
             env = Monitor(sub_env, log_dir_thisone)
@@ -63,38 +65,56 @@ class Agent_Dojo():
 
     def make_env(self):
         if self.multi_process:
-            num_CPUs_to_use = math.floor(0.9 * os.cpu_count())
+            if N_CPU_TO_USE is None or N_CPU_TO_USE == 0:
+                num_CPUs_to_use = math.floor(0.9 * os.cpu_count())
+            else:
+                num_CPUs_to_use = N_CPU_TO_USE
+
             if num_CPUs_to_use == os.cpu_count():
                 num_CPUs_to_use = os.cpu_count() - 1
             if num_CPUs_to_use < 1:
                 num_CPUs_to_use == 1
             self.n_envs = num_CPUs_to_use
-            self.env = SubprocVecEnv([self.make_subprocess_env(self.train_log_dir, i) for i in range(self.n_envs)])
+            #self.env = SubprocVecEnv([self.make_subprocess_env(self.train_log_dir, i) for i in range(self.n_envs)])
+            self.env = make_vec_env(self.env_class, 
+                                        n_envs = self.n_envs,
+                                        monitor_dir = self.train_log_dir, 
+                                        env_kwargs={'render': False})
+                                        #vec_env_cls=SubprocVecEnv)
+            
+            
+            self.eval_env = make_vec_env(self.env_class, 
+                                        monitor_dir = self.eval_log_dir, 
+                                        env_kwargs={'render': self.eval_render, 'seed': 9999999})
+                                        #vec_env_cls=SubprocVecEnv)
+            #self.eval_env = SubprocVecEnv([Monitor(self.env_class(render=self.eval_render), self.eval_log_dir)])
+            #self.eval_env = SubprocVecEnv([self.make_subprocess_env(self.eval_log_dir, 99999 + i) for i in range(2)])
+            
         else:
             self.n_envs = 1
             self.env = DummyVecEnv([lambda: Monitor(self.env_class(render=False), self.train_log_dir)])
-            
-        self.eval_env = DummyVecEnv([lambda: Monitor(self.env_class(render=self.eval_render), self.eval_log_dir)])
+            self.eval_env = DummyVecEnv([lambda: Monitor(self.env_class(render=self.eval_render), self.eval_log_dir)])
 
     def make_and_clear_folders(self):
         # Create model and log dir
-        self.train_log_dir = os.path.join(self.log_dir, 'train/')
-        self.eval_log_dir = os.path.join(self.log_dir, 'eval/')
+        self.train_log_dir = os.path.join(self.log_dir, 'train')
+        self.eval_log_dir = os.path.join(self.log_dir, 'eval')
         #os.makedirs(self.log_dir, exist_ok=True)
         os.makedirs(self.train_log_dir, exist_ok=True)
         os.makedirs(self.eval_log_dir, exist_ok=True)
-        os.makedirs(self.model_dir, exist_ok=True)
+        if not os.path.exists(self.model_dir):
+            os.makedirs(self.model_dir, exist_ok=True)
 
-        # # Clear contents of tmp log folder
-        # for filename in os.listdir(self.log_dir):
-        #     file_path = os.path.join(self.log_dir, filename)
-        #     try:
-        #         if os.path.isfile(file_path) or os.path.islink(file_path):
-        #             os.unlink(file_path)
-        #         elif os.path.isdir(file_path):
-        #             shutil.rmtree(file_path)
-        #     except Exception as e:
-        #         print('Failed to delete %s. Reason: %s' % (file_path, e))
+        # Clear contents of tmp log folder
+        for filename in os.listdir(self.log_dir):
+            file_path = os.path.join(self.log_dir, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                print('Failed to delete %s. Reason: %s' % (file_path, e))
 
     def observe_agent(self, agent):
         env = self.env_class(render=True)
@@ -142,14 +162,17 @@ class Agent_Dojo():
     def post_training_results(self, movingAvgWindow=50):
         self.movingAvgWindow = movingAvgWindow
 
-        if self.multi_process:
-            train_log_dir_0 = os.path.join(self.train_log_dir, '0')
-            eval_log_dir_0 = os.path.join(self.eval_log_dir, '0')
-            self.plot_results(train_log_dir_0, dataset='train')
-            self.plot_results(eval_log_dir_0, dataset='eval')
-        else:
-            self.plot_results(self.train_log_dir, dataset='train')
-            self.plot_results(self.eval_log_dir, dataset='eval')
+        self.plot_results(self.train_log_dir, dataset='train')
+        self.plot_results(self.eval_log_dir, dataset='eval')
+
+        # if self.multi_process:
+        #     train_log_dir_0 = os.path.join(self.train_log_dir, '0')
+        #     eval_log_dir_0 = os.path.join(self.eval_log_dir, '0')
+        #     self.plot_results(train_log_dir_0, dataset='train')
+        #     self.plot_results(eval_log_dir_0, dataset='eval')
+        # else:
+        #     self.plot_results(self.train_log_dir, dataset='train')
+        #     self.plot_results(self.eval_log_dir, dataset='eval')
 
 
 class CustomCNN(BaseFeaturesExtractor):
@@ -332,6 +355,8 @@ if __name__ == '__main__':
     start_time = time.time()
     env_class = Tanks_Env
 
+    os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+
     dojo = Agent_Dojo(
                     env_class=env_class,
                     RL_dir=RL_DIR,
@@ -340,43 +365,67 @@ if __name__ == '__main__':
                     multi_process=MULTI_PROCESS,
                     eval_render=EVAL_RENDER)
 
-    # agent = PPO_CNN_Agent(
-    #                 dojo, 
-    #                 model_name='PPO_CNN'
-    #                 max_episodes=MAX_EPISODES, 
-    #                 min_evals=MIN_EVALS,
-    #                 max_no_improvement_evals=MAX_NO_IMPROVE,
-    #                 progress_bar=PROGRESS_BAR,
-    #                 eval_render=EVAL_RENDER
-    #                 eval_freq=EVAL_FREQ,
-    #                 n_eval_episodes=N_EVAL_EPISODES,
-    #                 learning_rate=INITIAL_LEARN_RATE, 
-    #                 use_linear_LR_decrease=USE_LR_DECREASE,
-    #                 verbose=VERBOSE)
+    if AGENT_OBS_TYPE == 'CNN':
+        agent = PPO_CNN_Agent(
+                        dojo, 
+                        model_name='PPO_CNN',
+                        max_episodes=MAX_EPISODES, 
+                        min_evals=MIN_EVALS,
+                        max_no_improvement_evals=MAX_NO_IMPROVE,
+                        progress_bar=PROGRESS_BAR,
+                        eval_render=EVAL_RENDER,
+                        eval_freq=EVAL_FREQ,
+                        n_eval_episodes=N_EVAL_EPISODES,
+                        learning_rate=INITIAL_LEARN_RATE, 
+                        use_linear_LR_decrease=USE_LR_DECREASE,
+                        verbose=VERBOSE)
 
-    agent = PPO_MLP_Agent(
-                    dojo,
-                    model_name='PPO_MLP',
-                    max_episodes=MAX_EPISODES, 
-                    max_no_improvement_evals=MAX_NO_IMPROVE,
-                    min_evals=MIN_EVALS,
-                    progress_bar=PROGRESS_BAR,
-                    eval_render=EVAL_RENDER,
-                    eval_freq=EVAL_FREQ,
-                    n_eval_episodes=N_EVAL_EPISODES,
-                    learning_rate=INITIAL_LEARN_RATE, 
-                    use_linear_LR_decrease=USE_LR_DECREASE,
-                    train_verbose=TRAIN_VERBOSE,
-                    eval_verbose=EVAL_VERBOSE)
+    elif AGENT_OBS_TYPE == 'MLP':
+        agent = PPO_MLP_Agent(
+                        dojo,
+                        model_name='PPO_MLP',
+                        max_episodes=MAX_EPISODES, 
+                        max_no_improvement_evals=MAX_NO_IMPROVE,
+                        min_evals=MIN_EVALS,
+                        progress_bar=PROGRESS_BAR,
+                        eval_render=EVAL_RENDER,
+                        eval_freq=EVAL_FREQ,
+                        n_eval_episodes=N_EVAL_EPISODES,
+                        learning_rate=INITIAL_LEARN_RATE, 
+                        use_linear_LR_decrease=USE_LR_DECREASE,
+                        train_verbose=TRAIN_VERBOSE,
+                        eval_verbose=EVAL_VERBOSE)
+
+    else:
+        raise Exception("Agent Observation Type Unknown")
+
+
+    agent_name = 'PPO_' + AGENT_OBS_TYPE
+    agent_path = os.path.join('RL', 'Model', agent_name)
+
+    if CONTINUE_TRAINING:
+        # Check for agent saved at the end of the last training run
+        if os.path.exists(os.path.join(agent_path, f"{agent_name}.zip")):
+            agent.model.set_parameters(os.path.join(agent_path, f"{agent_name}.zip"))
+        # Check for agent saved during eval callbacks
+        elif os.path.exists(os.path.join(agent_path, 'best_model.zip')):
+            agent.model.set_parameters(os.path.join(agent_path, 'best_model.zip'))
+        # raise exception because agent could not be found
+        else:
+            raise Exception("Agent does not exist. Cannot continue training. Check path or train a new agent from scratch.")
+
 
     print('Starting the training!!')
     agent.learn(total_timesteps=TOTAL_TIMESTEPS)
+
+    agent.model.save(os.path.join(agent_path, agent_name))
 
     dojo.post_training_results()
     dojo.observe_agent(agent)
 
     end_time = time.time()
     elapsed_time_sec = end_time - start_time
-    elapsed_time_min = elapsed_time_sec / 60
+    min_leftover, sec = divmod(elapsed_time_sec, 60)
+    hour, min = divmod(min_leftover, 60) 
     print('Program Complete')
-    print('Execution time:', elapsed_time_min, 'minutes')
+    print(f'Execution time: {hour} : {min} : {sec}')
