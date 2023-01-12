@@ -1,5 +1,5 @@
 # Standard Library Imports
-import sys, os, random
+import sys, os, random, math
 
 #Anaconda packages
 import numpy as np
@@ -106,10 +106,13 @@ class Tanks_Env(gym.Env):
             mine_low = [0, -360, -np.inf, -np.inf] #dist, bearing, pos_x, pos_y
             mine_high = [np.inf, 360, np.inf, np.inf] #dist, bearing, pos_x, pos_y
 
+            # closest interior wall
             wall_single_low = [0, -360, -np.inf, -np.inf] #dist, bearing, pos_x, pos_y
             wall_single_high = [np.inf, 360, np.inf, np.inf] #dist, bearing, pos_x, pos_y
-            wall_low = num_interior_walls * wall_single_low
-            wall_high = num_interior_walls * wall_single_high
+            #wall_low = num_interior_walls * wall_single_low
+            #wall_high = num_interior_walls * wall_single_high
+            wall_low = wall_single_low
+            wall_high = wall_single_high
 
             low_obs = np.array([count_down_low, 
                                 *goal_low, 
@@ -214,10 +217,22 @@ class Tanks_Env(gym.Env):
             mine_state = [0, 0, 0, 0]
 
         # Interior Wall (all interior)
-        wall_state = []
-        for wall_num, wall_attributes in game_dict['walls'].items():
-            for key, value in wall_attributes.items():
-                wall_state.append(value)
+        # wall_state = []
+        # for wall_num, wall_attributes in game_dict['walls'].items():
+        #     for key, value in wall_attributes.items():
+        #         wall_state.append(value)
+
+        # Closest interior wall
+        if game_dict['walls']:
+            closest_dist = np.inf
+            for wall_num, wall_attributes in game_dict['walls'].items():
+                if wall_attributes['distance'] < closest_dist:
+                    closest_dist = wall_attributes['distance']
+                    wall_state = []
+                    for key, value in wall_attributes.items():
+                        wall_state.append(value)
+        else:
+            wall_state = [0, 0, 0, 0]
 
         observation = [game_time, 
                         *goal_state, 
@@ -384,7 +399,7 @@ class Tanks_Env(gym.Env):
         blue_score_prior = info['prior_state']['blue_score']
         blue_score_new = info['new_state']['blue_score']
         blue_score_delta = blue_score_new - blue_score_prior
-        r_blue_score = blue_score_delta
+        r_blue_score = 10 * blue_score_delta
 
         # Reward for red scoring
         red_score_prior = info['prior_state']['red_score']
@@ -395,10 +410,14 @@ class Tanks_Env(gym.Env):
         # reward for step
         #r_step = R_EACH_STEP
         # Moving to goal
-        if info['new_state']['goal']['distance'] < info['prior_state']['goal']['distance']:
-            r_step_goal = R_MOVING_TOWARD_GOAL
-        else:
-            r_step_goal = 0
+        # if info['new_state']['goal']['distance'] < info['prior_state']['goal']['distance']:
+        #     r_step_goal = R_MOVING_TOWARD_GOAL
+        # else:
+        #     r_step_goal = 0
+
+        max_dis = math.sqrt(self.game.width**2 + self.game.height**2)
+        r_step_goal = R_MOVING_TOWARD_GOAL * (max_dis - info['new_state']['goal']['distance']) / max_dis
+
         # Moving to health if needed
 
         # if info['new_state']['player']['health'] < 0.5*PLAYER_HEALTH:
