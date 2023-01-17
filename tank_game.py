@@ -65,16 +65,26 @@ class Game:
         self.open_spaces = []
         self.health_locations = []
         self.ammo_locations = []
+        self.num_mob = 0
+        self.num_player = 0
         for row, tiles in enumerate(self.map_data):
             for col, tile in enumerate(tiles):
                 if tile == '1':
                     Wall(self, col, row)
                 elif tile == 'P':
                     self.player = Player(self, col, row)
+                    self.open_spaces.append([col, row])
+                    self.open_pos.append(vec(col, row) * TILESIZE)
+                    self.num_player += 1
                 elif tile == 'M':
                     Mob(self, col, row)
+                    self.open_spaces.append([col, row])
+                    self.open_pos.append(vec(col, row) * TILESIZE)
+                    self.num_mob += 1
                 elif tile == 'G':
                     self.goal = Goal(self, col, row)
+                    self.open_spaces.append([col, row])
+                    self.open_pos.append(vec(col, row) * TILESIZE)
                 elif tile == 'A':
                     Ammo(self, col, row)
                     self.ammo_locations.append([col, row])
@@ -127,6 +137,8 @@ class Game:
 
     def advance_time(self):
         self.dt_ms = self.clock.tick(FPS)
+        if self.dt_ms > 500:
+            self.dt_ms = 500
         self.dt = self.dt_ms / 1000
 
     def hit_by_bullet(self, hit_sprites):

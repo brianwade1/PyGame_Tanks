@@ -346,9 +346,9 @@ class PPO_MLP_Agent(Base_Agent):
                     n_epochs=self.n_epochs,
                     clip_range = self.clip_range, 
                     ent_coef = self.ent_coef,
-                    verbose = self.train_verbose)
-                    #tensorboard_log = os.path.join(self.dojo.RL_dir,'tensorboard/',self.model_name,self.datetime_hash)
-                    #)
+                    verbose = self.train_verbose,
+                    tensorboard_log = os.path.join(self.dojo.RL_dir,'tensorboard/',self.model_name,self.datetime_hash)
+                    )
 
 
 if __name__ == '__main__':

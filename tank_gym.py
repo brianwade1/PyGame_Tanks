@@ -521,11 +521,32 @@ class Tanks_Env(gym.Env):
        
         return next_observation, reward, done, info
 
+    def _find_open_location(self, sprite, other_sprites):
+        possible_locs = []
+        for pos in self.game.open_pos:
+            dis_to_others = []
+            for other_sprite in other_sprites:
+                dis_to_others.append(other_sprite.pos.distance_to(vec(pos)))
+                if all(dis >= SPAWN_MIN_DIS_FROM_OTHERS for dis in dis_to_others):
+                    possible_locs.append(pos)
+        new_location = random.choice(possible_locs)
+        return new_location
+
     def reset(self) -> np.array:
         ''' 
         Resets the game and gets the initial observation
         '''
         self.game.new()
+
+        # move player and mobs to random open spot
+        moving_sprites = [*self.game.players.sprites(), *self.game.mobs.sprites(), *self.game.goals.sprites()]
+        for sprite in moving_sprites:
+            sprite_now = moving_sprites.pop(0)
+            sprite_now.pos = self._find_open_location(sprite_now, moving_sprites)
+            moving_sprites.append(sprite_now)
+            pass
+
+        # Set up for computer control in RL training
         self.game.player.human_player = False # Set player to agent
         self.game.playing = True
 
@@ -545,7 +566,7 @@ class Tanks_Env(gym.Env):
 
 
 if __name__ == '__main__':
-    env = Tanks_Env(CNN_obs=False, render=True)
+    env = Tanks_Env(CNN_obs=False, render=True, seed=int(random.random()*1000))
 
     observation = env.reset()
     done = False
